@@ -1,5 +1,5 @@
 #include "stepper.h"
-#include "stm32f4xx_hal_gpio.h"
+#include "stm32f4xx_hal.h"
 
 
 
@@ -7,7 +7,7 @@ void Stepper_step(Stepper *self) {
 	HAL_GPIO_TogglePin(self->io.gpio, self->io.step);
 
 	// TODO: Add a short wait period. Implement this.
-
+	HAL_Delay(1);
 
 	HAL_GPIO_TogglePin(self->io.gpio, self->io.step);
 }

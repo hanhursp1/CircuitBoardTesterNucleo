@@ -134,12 +134,18 @@ int USART_Cookie_close(void* cookie) {
 }
 
 FILE* USART_fopen(USART u) {
+	// Open a USART device as a file with write permissions, returning a file handle
+	// that allows the USART device to be read from and written to. Only works with GCC
+	// due to requiring the cookies extension for custom streams. Thankfully, PlatformIO
+	// uses GCC.
+
+	// Create the cookie functions
 	cookie_io_functions_t c = {
 		.read = USART_Cookie_read,
 		.write = USART_Cookie_write,
 		.seek = USART_Cookie_seek,
 		.close = USART_Cookie_close
 	};
-	
+	// Return the stream
 	return fopencookie(u, "w", c);
 }

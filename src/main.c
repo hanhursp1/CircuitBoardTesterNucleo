@@ -18,17 +18,21 @@ int main(void) {
   HAL_Init();
   LED_Init();
 
+	// Do a delay before working any further (fixes something, I forget what.)
 	HAL_Delay(1000);
 
+	// Initialize USB serial, which also initializes the stdout
 	USB_init();
 
 	int i = 0;
-	// scanf("%d", &i);
 
   while (1)
   {
+		// Print to stdout and flush it
 		printf("Hello world! %d\n", i++);
 		fflush(stdout);
+		
+		// Toggle onboard LED
 		GPIOA->ODR |= 0x0020;
     HAL_Delay(1000);
 		GPIOA->ODR &= ~0x0020;
