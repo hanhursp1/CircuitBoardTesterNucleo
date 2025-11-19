@@ -26,13 +26,16 @@ int main(void) {
 	USB_init();
 
 	HAL_Delay(100);
-	printf("Enter an argument: ");
+	printf("Enter an instruction: ");
 
-	GcodeArg testArg = gcode_arg_decode(stdin);
+	Gcode test = gcode_decode(stdin);
 
-	printf("Got: %c%d\n", testArg.id, testArg.value);
+	printf("Got %d args: ", test.num_args);
+	for (int i = 0; i < test.num_args; i++) {
+		printf("%c%d ", test.args[i].id, test.args[i].value);
+	}
 
-	int i = 0;
+	// int i = 0;
 
   while (1)
   {
