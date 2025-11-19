@@ -31,5 +31,5 @@ void Stepper_init(Stepper *self) {
 	init.Mode = MODE_OUTPUT;
 
 	HAL_GPIO_Init(self->io.gpio, &init);
-
+	
 }

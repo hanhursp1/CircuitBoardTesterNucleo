@@ -1,3 +1,4 @@
+#include "gcodes.h"
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx.h"
 
@@ -24,12 +25,19 @@ int main(void) {
 	// Initialize USB serial, which also initializes the stdout
 	USB_init();
 
+	HAL_Delay(100);
+	printf("Enter an argument: ");
+
+	GcodeArg testArg = gcode_arg_decode(stdin);
+
+	printf("Got: %c%d\n", testArg.id, testArg.value);
+
 	int i = 0;
 
   while (1)
   {
 		// Print to stdout and flush it
-		printf("Hello world! %d\n", i++);
+		// printf("Hello world! %d\n", i++);
 		fflush(stdout);
 		
 		// Toggle onboard LED

@@ -95,7 +95,7 @@ int USART_read_string(USART u, char *buffer, int len) {
     if (data == '\r' || data == '\n') {
       USART_write(u, '\n');
       // MUST have a null terminator
-      buffer[i] = '\x00';
+      buffer[i] = '\n';
       return len; // We did not exceed `len`
     }
     // Else if we got a backspace, print a backspace and then continue
@@ -147,5 +147,5 @@ FILE* USART_fopen(USART u) {
 		.close = USART_Cookie_close
 	};
 	// Return the stream
-	return fopencookie(u, "w", c);
+	return fopencookie(u, "w+", c);
 }
