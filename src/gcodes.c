@@ -1,5 +1,6 @@
 #include "gcodes.h"
 #include "stepper.h"
+#include <ctype.h>
 #include <stdio.h>
 
 extern Stepper railLeft;
@@ -21,12 +22,13 @@ Gcode gcode_decode(FILE *stream) {
 			break;
 		}
 		// Store the id and value in the current index.
-		result.args[arg_idx].id = c;
-		fscanf(stream, "%d", &result.args[arg_idx].value);
+		result.args[arg_idx].id = toupper(c);
+		fscanf(stream, "%hd", &result.args[arg_idx].value);
 		// Get the next character
 		c = fgetc(stream);
 		arg_idx++;
 	}
+	// fgetc(stream);
 	result.num_args = arg_idx;
 	return result;
 }

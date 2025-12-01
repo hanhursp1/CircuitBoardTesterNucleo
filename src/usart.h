@@ -28,6 +28,7 @@ char USART_read(USART u);
 
 bool USART_has_data(USART u);
 void USART_wait_for_data(USART u);
+void USART_flush(USART u);
 
 int USART_write_string(USART u, const char* str);
 int USART_read_string(USART u, char* buffer, int bufferlen);

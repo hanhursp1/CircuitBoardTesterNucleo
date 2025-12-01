@@ -68,6 +68,12 @@ char USART_read(USART u) {
   return u->DR & 0xFF;
 }
 
+void USART_flush(USART u) {
+	while (USART_has_data(u)) {
+		volatile int _discard = u->DR;
+	}
+}
+
 int USART_write_string(USART u, const char *str) {
   // Write each character of the string until a null byte is encountered.
 	int i = 0;
