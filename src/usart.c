@@ -54,22 +54,25 @@ void USART_write(USART u, uint8_t ch) {
   u->DR = (ch & 0xFF);
 }
 
-bool USART_has_data(USART u) {
+inline bool USART_has_data(USART u) {
   return (u->SR & 0x0020) != 0;
 }
 
-void USART_wait_for_data(USART u) {
+
+inline void USART_wait_for_data(USART u) {
   while (!USART_has_data(u)) {}
 }
 
-char USART_read(USART u) {
+inline char USART_read(USART u) {
   while (!(u->SR & 0x0020)) {
   } // Wait until there is data to read
   return u->DR & 0xFF;
 }
 
-void USART_flush(USART u) {
+inline void USART_flush(USART u) {
 	while (USART_has_data(u)) {
+		// I think this needs to be volatile or else it will just
+		// not compile it with optimizations turned on.
 		volatile int _discard = u->DR;
 	}
 }

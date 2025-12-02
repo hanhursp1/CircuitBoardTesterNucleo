@@ -22,3 +22,12 @@ typedef struct Gcode {
 
 Gcode gcode_decode(FILE* stream);
 GcodeArg gcode_arg_decode(FILE* stream);
+
+void __gcode_assert(const char * filename, int line, const char * funcname, const char * what_broke);
+
+// Based on the ANSI assert implementation. I've modified it to simply return rather than
+// panic or loop forever.
+#define gcode_assert(_thing) if (!(_thing)) { \
+	__gcode_assert(__FILE__, __LINE__, __ASSERT_FUNC, #_thing);\
+	return;\
+}

@@ -5,6 +5,7 @@
 #include "stepper.h"
 
 #include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal_gpio.h"
 #include "stm32f4xx_hal_rcc.h"
 #include "usart.h"
 #include <assert.h>
@@ -19,35 +20,60 @@ void LED_Init();
 
 Stepper test_stepper;
 
+void __gcode_assert(const char * filename, int line, const char * funcname, const char * what_broke) {
+	printf("Exception in file: \"%s:%d\": \n\tFunction \"%s\": `%s` evaluated to false", filename, line, funcname, what_broke);
+}
+
 void __assert_func(const char * filename, int line, const char * funcname, const char * what_broke) {
 	printf("Exception in file: \"%s:%d\": \n\tFunction \"%s\": `%s` evaluated to false", filename, line, funcname, what_broke);
 	while (true) {} // Loop forever
 }
 
+// Placeholder gcode execution function
 void exec_gcode(Gcode gcode) {
-	assert(gcode.num_args >= 1);
+	gcode_assert(gcode.num_args >= 1);
+	// Switch based on command group (this is the letter of the command)
 	switch (gcode.args[0].id) {
 		case 'R': {
+			// Switch based on command id (this is the number of the command)
 			switch (gcode.args[0].value) {
+				/*  Command R20:
+				 *    Commands R20 R{N} and R20 L{N} rotate the stepper motor by N steps clockwise
+				 *    and counterclockwise respectfully.
+				 */
 				case 20: {
-					assert(gcode.num_args >= 2);
-
+					// Assert that the input is valid. Panic if not.
+					gcode_assert(gcode.num_args >= 2);
 					char id = gcode.args[1].id;
-					assert(id == 'L' || id == 'R');
+					gcode_assert(id == 'L' || id == 'R');
 
+					// Get the direction based on the argument id, and the number of turns
+					// based on the argument value
 					StepperDirection dir = (id == 'L') ? STEPD_COUNTERCLOCKWISE : STEPD_CLOCKWISE;
 					int num_turns = gcode.args[1].value;
 
+					// Alert the user over USART stdout
 					printf("Turning %s %d ticks...\n", (dir == STEPD_CLOCKWISE) ? "clockwise" : "counterclockwise",  num_turns);
-					Stepper_set_direction(&test_stepper, dir);
-					
 					fflush(stdout);
+					// Set the direction of the stepper
+					Stepper_set_direction(&test_stepper, dir);
+					// Actually rotate the stepper
 					for (int i = 0; i < num_turns; i++) {
 						Stepper_step(&test_stepper);
 					}
 				} break;
 				default: {
 					printf("Unrecognized gcode instruction: %c%d", gcode.args[0].id, gcode.args[0].value);
+				} break;
+			}
+		} break;
+		case 'G': {
+			switch (gcode.args[0].value) {
+				/*  Command G00:
+				 *    Simple debug command that toggles the on-board LED
+				 */
+				case 0: {
+					HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 				} break;
 			}
 		} break;
@@ -79,25 +105,24 @@ int main(void) {
 	HAL_Delay(100);
 
 	Stepper_set_direction(&test_stepper, STEPD_CLOCKWISE);
-	// for (int i = 0; i < 1000; i ++) {
-	// 	Stepper_step(&test_stepper);
-	// }
 
+	// Prompt the user for a gcode instruction, and then execute it.
 	while (true) {
 		printf("Enter an instruction: ");
 
-		
+		// Decode the next valid instruction and then flush the USART
 		Gcode test = gcode_decode(stdin);
 		USART_flush(USB_USART);
 
+		// Print the commmand we got
 		printf("Got %d args: ", test.num_args);
 		for (int i = 0; i < test.num_args; i++) {
-			printf("%c%d ", test.args[i].id, test.args[i].value);
+			printf("%c%d", test.args[i].id, test.args[i].value);
 		}
+		printf("\n");
+		// Run the command
 		exec_gcode(test);
 	}
-
-	// int i = 0;
 
   while (1)
   {

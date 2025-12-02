@@ -8,7 +8,7 @@
 void Stepper_step(Stepper* self) {
 	HAL_GPIO_TogglePin(self->io.gpio, self->io.step);
 
-	// TODO: Add a short wait period. Implement this.
+	// TODO: Make this delay shorter somehow. Maybe add a custom timer implementation?
 	HAL_Delay(1);
 
 	HAL_GPIO_TogglePin(self->io.gpio, self->io.step);
