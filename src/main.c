@@ -94,7 +94,7 @@ int main(void) {
 	// Do a delay before working any further (fixes something, I forget what.)
 	HAL_Delay(1000);
 
-	// Initialize USB serial, which also initializes the stdout
+	// Initialize USB serial, which also initializes the stdout and stdin
 	USB_init();
 
 	test_stepper.io = (StepperIO){
@@ -117,7 +117,7 @@ int main(void) {
 		// Print the commmand we got
 		printf("Got %d args: ", test.num_args);
 		for (int i = 0; i < test.num_args; i++) {
-			printf("%c%d", test.args[i].id, test.args[i].value);
+			printf("%c%d ", test.args[i].id, test.args[i].value);
 		}
 		printf("\n");
 		// Run the command

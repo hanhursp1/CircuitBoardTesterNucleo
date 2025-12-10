@@ -10,7 +10,7 @@
 typedef struct GcodeArg {
 	char id;
 	// TODO: Make it so value can be either an int or a float
-	uint16_t value;
+	int32_t value;
 } GcodeArg;
 
 typedef struct Gcode {

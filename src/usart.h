@@ -1,14 +1,3 @@
-/***************************************************
-* Lab_ / usart2.h
-*
-* Header containing definitions of usart functions
-* for USART2
-*
-*
-* Author: Philip Hanhurst
-* Date Last Modified: 2/21/2025
-*
-***************************************************/
 
 // Only import this file once
 #pragma once

@@ -41,9 +41,8 @@ void Stepper_init(Stepper *self) {
 
 	HAL_GPIO_Init(self->io.gpio, &init);
 
-	// HAL_GPIO_WritePin(self->io.gpio, self->io.enable, GPIO_PIN_RESET);
-	// HAL_GPIO_WritePin(self->io.gpio, self->io.reset, GPIO_PIN_RESET);
-	// HAL_GPIO_WritePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState)
+	HAL_GPIO_WritePin(self->io.gpio, self->io.enable, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(self->io.gpio, self->io.reset, GPIO_PIN_RESET);
 	
 }
 

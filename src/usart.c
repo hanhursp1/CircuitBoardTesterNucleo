@@ -1,14 +1,3 @@
-/***************************************************
- * Lab_Timers / usart2.c
- *
- * Code containing implementation of usart functions
- * for USART2
- *
- *
- * Author: Philip Hanhurst
- * Date Last Modified: 2/21/2025
- *
- ***************************************************/
 
 // required define for cookies
 #define _GNU_SOURCE
@@ -132,13 +121,11 @@ ssize_t USART_Cookie_write(void* cookie, const char* buf, size_t size) {
 
 int USART_Cookie_seek(void* cookie, off_t* offset, int whence) {
 	// DBG("Seeking buffer...\n");
-	// TODO: Not real fuck you
 	return 0;
 }
 
 int USART_Cookie_close(void* cookie) {
 	// DBG("Closing...\n");
-	// TODO: Not real fuck you
 	return 0;
 }
 
