@@ -1,0 +1,37 @@
+Gcode operations:
+    Move left and right servos
+        In radians or in degrees?
+    Move left and right steppers
+        Absolute or relative? Some 3D printers have both
+    Move bed up and down
+    Homing operation (reset left/right steppers, calibrate)
+    Probing operation (read from probe and record output)
+        Record contact/net names? If so, the gcode parser will need to be rewritten to support strings
+    Start/end of stream
+
+Other considerations:
+    Does this need to be gcode? Could a binary format work better?
+    Do we want to specify a coordinate set and have the microcontroller do the work, or should the plotter do that work first?
+        i.e. should the gcode be higher level or lower level?
+        Plotter has more processing power than is available to the microcontroller, but has to think ahead (i.e. no runtime information, all compile-time)
+    How do we move multiple components at once?
+        Implement some asynchronous system, i.e. an event loop with a set tick rate.
+        Use timer interrupts
+        SHOULD we even move multiple components at once?
+        Which takes precedent: the steppers or the servos?
+    How do we ensure one probe is always on the left and the other is always on the right?
+        Add runtime checks?
+        Move both probes at once with a single gcode instruction
+            i.e. specify two sets of coordinates and let the microcontroller handle it
+
+Planned operations:
+    Move to coordinate set
+    Raise/lower bed
+    Read from probes
+    Set calibration information
+        Homing
+        Set servo basis
+        Set stepper basis
+        Set stepper ratio (steps per mm)
+
+TODO also: Check if a gcode standard already exists for PCB probers/plotters

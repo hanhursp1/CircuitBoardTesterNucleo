@@ -59,7 +59,7 @@ void exec_gcode(Gcode gcode) {
 					Stepper_set_direction(&test_stepper, dir);
 					// Actually rotate the stepper
 					for (int i = 0; i < num_turns; i++) {
-						Stepper_step(&test_stepper);
+						Stepper_step_immediate(&test_stepper);
 					}
 				} break;
 				default: {
