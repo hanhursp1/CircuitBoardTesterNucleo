@@ -97,44 +97,57 @@ int main(void) {
 	// Initialize USB serial, which also initializes the stdout and stdin
 	USB_init();
 
-	test_stepper.io = (StepperIO){
-		.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
-	};
-	Stepper_init_simplified(&test_stepper);
+	// test_stepper.io = (StepperIO){
+	// 	.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
+	// };
+	// Stepper_init_simplified(&test_stepper);
 
-	HAL_Delay(100);
+	// HAL_Delay(100);
 
-	Stepper_set_direction(&test_stepper, STEPD_CLOCKWISE);
+	// Stepper_set_direction(&test_stepper, STEPD_CLOCKWISE);
 
-	// Prompt the user for a gcode instruction, and then execute it.
-	while (true) {
-		printf("Enter an instruction: ");
+	// // Prompt the user for a gcode instruction, and then execute it.
+	// while (true) {
+	// 	printf("Enter an instruction: ");
 
-		// Decode the next valid instruction and then flush the USART
-		Gcode test = gcode_decode(stdin);
-		USART_flush(USB_USART);
+	// 	// Decode the next valid instruction and then flush the USART
+	// 	Gcode test = gcode_decode(stdin);
+	// 	USART_flush(USB_USART);
 
-		// Print the commmand we got
-		printf("Got %d args: ", test.num_args);
-		for (int i = 0; i < test.num_args; i++) {
-			printf("%c%d ", test.args[i].id, test.args[i].value);
-		}
-		printf("\n");
-		// Run the command
-		exec_gcode(test);
-	}
+	// 	// Print the commmand we got
+	// 	printf("Got %d args: ", test.num_args);
+	// 	for (int i = 0; i < test.num_args; i++) {
+	// 		printf("%c%d ", test.args[i].id, test.args[i].value);
+	// 	}
+	// 	printf("\n");
+	// 	// Run the command
+	// 	exec_gcode(test);
+	// }
 
   while (1)
   {
 		// Print to stdout and flush it
 		// printf("Hello world! %d\n", i++);
 		fflush(stdout);
-		
-		// Toggle onboard LED
-		GPIOA->ODR |= 0x0020;
-    HAL_Delay(1000);
-		GPIOA->ODR &= ~0x0020;
-		HAL_Delay(1000);
+
+		// char buffer[512];
+		// scanf("%s", buffer);
+		// fflush(stdout);
+		// HAL_Delay(10);
+		// printf("Got string %s", buffer);
+		int num_blinks;
+		scanf("Blink: %d", &num_blinks);
+		fflush(stdout);
+		HAL_Delay(10);
+		printf("Blinking %d time(s)\n", num_blinks);
+		fflush(stdout);
+		for (int i = 0; i < num_blinks; i++) {
+			// Toggle onboard LED
+			GPIOA->ODR |= 0x0020;
+			HAL_Delay(200);
+			GPIOA->ODR &= ~0x0020;
+			HAL_Delay(200);
+		}
   }
 }
 
