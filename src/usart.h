@@ -22,5 +22,10 @@ void USART_flush(USART u);
 int USART_write_string(USART u, const char* str);
 int USART_read_string(USART u, char* buffer, int bufferlen);
 
+void USART_read_exact(USART u, char* buffer, int len);
+void USART_write_exact(USART u, const char* buffer, int len);
+
 FILE* USART_fopen(USART u);
-#define DBG(s) USART_write_string(USB_USART, s)
+
+int USART_write_string_debug(USART u, const char* str);
+#define DBG(s) USART_write_string_debug(USB_USART, s)

@@ -1,4 +1,5 @@
 #include "gcodes.h"
+#include "packet.h"
 #include "stm32f446xx.h"
 #include "stm32f4xx.h"
 
@@ -8,7 +9,10 @@
 #include "stm32f4xx_hal_gpio.h"
 #include "stm32f4xx_hal_rcc.h"
 #include "usart.h"
+#include "netlist.h"
+#include "scheduler.h"
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -29,56 +33,52 @@ void __assert_func(const char * filename, int line, const char * funcname, const
 	while (true) {} // Loop forever
 }
 
-// Placeholder gcode execution function
-void exec_gcode(Gcode gcode) {
-	gcode_assert(gcode.num_args >= 1);
-	// Switch based on command group (this is the letter of the command)
-	switch (gcode.args[0].id) {
-		case 'R': {
-			// Switch based on command id (this is the number of the command)
-			switch (gcode.args[0].value) {
-				/*  Command R20:
-				 *    Commands R20 R{N} and R20 L{N} rotate the stepper motor by N steps clockwise
-				 *    and counterclockwise respectfully.
-				 */
-				case 20: {
-					// Assert that the input is valid. Panic if not.
-					gcode_assert(gcode.num_args >= 2);
-					char id = gcode.args[1].id;
-					gcode_assert(id == 'L' || id == 'R');
+#define INT_FROM_STR(s) (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | (s[3])
 
-					// Get the direction based on the argument id, and the number of turns
-					// based on the argument value
-					StepperDirection dir = (id == 'L') ? STEPD_COUNTERCLOCKWISE : STEPD_CLOCKWISE;
-					int num_turns = gcode.args[1].value;
-
-					// Alert the user over USART stdout
-					printf("Turning %s %d ticks...\n", (dir == STEPD_CLOCKWISE) ? "clockwise" : "counterclockwise",  num_turns);
-					fflush(stdout);
-					// Set the direction of the stepper
-					Stepper_set_direction(&test_stepper, dir);
-					// Actually rotate the stepper
-					for (int i = 0; i < num_turns; i++) {
-						Stepper_step_immediate(&test_stepper);
-					}
-				} break;
-				default: {
-					printf("Unrecognized gcode instruction: %c%d", gcode.args[0].id, gcode.args[0].value);
-				} break;
-			}
+void command_test(FILE* f) {
+	// Get the 4-char long command
+	char str_tmp[5];
+	fscanf(f, "%4s", str_tmp);
+	// Cast to an int to make comparisons easier
+	volatile uint32_t cmd = *(uint32_t*)(str_tmp);
+	switch(cmd) {
+		// EVERYTHING IS BACKWARDS BECAUSE C DOES LONG CHAR CONSTS IN BIG ENDIAN (bad)
+		case '_nur': {
+			// TODO: Everything
 		} break;
-		case 'G': {
-			switch (gcode.args[0].value) {
-				/*  Command G00:
-				 *    Simple debug command that toggles the on-board LED
-				 */
-				case 0: {
-					HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-				} break;
+		case 'trev': {
+			fill_pointlist_from_file(f);
+			fflush(f);
+			USART_flush(USB_USART);
+		} break;
+		case 'sten': {
+			fill_netlist_from_file(f);
+			fflush(f);
+			USART_flush(USB_USART);
+		} break;
+		case 'ohce': {
+			// int num_verts = get_vert_count();
+			int num_nets = get_net_count();
+			for (int i = 0; i < num_nets; i++) {
+				printf("Net(%04d) {", i);
+				NetlistEntry net = nets_buffer[i];
+				for (int j = 0; j < net.length; j++) {
+					NetlistPoint point = points_buffer[net.start_index + j];
+					printf("%d, %d; ", point.x, point.y);
+				}
+				printf("} :: ");
 			}
+			fflush(stdout);
 		} break;
 		default: {
-			printf("Unrecognized gcode instruction: %c%d", gcode.args[0].id, gcode.args[0].value);
+			// char* c = (char*)&cmd;
+			// char str[5] = {c[0], c[1], c[2], c[3], 0};
+			char s[1024];
+			fscanf(f, "%s", s);
+			printf("Invalid command: %s%s", str_tmp, s);
+			fflush(f);
+			// This unfortunately cannot be abstracted away with the file API
+			USART_flush(USB_USART);
 		} break;
 	}
 }
@@ -96,6 +96,8 @@ int main(void) {
 
 	// Initialize USB serial, which also initializes the stdout and stdin
 	USB_init();
+
+	crc_init();
 
 	// test_stepper.io = (StepperIO){
 	// 	.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
@@ -124,31 +126,14 @@ int main(void) {
 	// 	exec_gcode(test);
 	// }
 
-  while (1)
+  while (true)
   {
-		// Print to stdout and flush it
-		// printf("Hello world! %d\n", i++);
-		fflush(stdout);
-
-		// char buffer[512];
-		// scanf("%s", buffer);
-		// fflush(stdout);
-		// HAL_Delay(10);
-		// printf("Got string %s", buffer);
-		int num_blinks;
-		scanf("Blink: %d", &num_blinks);
-		fflush(stdout);
-		HAL_Delay(10);
-		printf("Blinking %d time(s)\n", num_blinks);
-		fflush(stdout);
-		for (int i = 0; i < num_blinks; i++) {
-			// Toggle onboard LED
-			GPIOA->ODR |= 0x0020;
-			HAL_Delay(200);
-			GPIOA->ODR &= ~0x0020;
-			HAL_Delay(200);
-		}
+		fflush(stdin);
+		USART_flush(USB_USART);
+		command_test(stdin);
+		// scheduling_test();
   }
+	HAL_GPIO_WritePin(LED_GPIO_PORT, LED_PIN, GPIO_PIN_SET);
 }
 
 void LED_Init() {
@@ -164,3 +149,4 @@ void LED_Init() {
 void SysTick_Handler(void) {
   HAL_IncTick();
 }
+

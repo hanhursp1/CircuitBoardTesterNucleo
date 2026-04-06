@@ -11,3 +11,11 @@
 
 // Maximum size of the stepper registry
 #define MAX_STEPPERS 4
+
+// USART Echo Mode (echo all input recieved)
+// #define ECHO_MODE
+
+// Maximum number of concurrent processes
+#define PROCESSES 16
+
+// #define USE_IRQ

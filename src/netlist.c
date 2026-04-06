@@ -1,5 +1,6 @@
 #include "netlist.h"
 #include "config.h"
+#include "usart.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -19,35 +20,52 @@ int get_net_count() {
 	return num_nets;
 }
 
+int get_vert_count() {
+	return num_points;
+}
+
 void clear_netlist() {
 	num_nets = 0;
 	num_points = 0;
 }
 
 void fill_netlist_from_file(FILE* f) {
-	// TODO: Make this a byte stream instead of ascii text
-	fflush(f);
-	fscanf(f, "%d", &num_nets);
+	// Flush the file
+	// fflush(f);
+	// Get the number of nets from the parameter
+	fscanf(f, "(%04u):", &num_nets);
 	// TODO: Panic if num_nets is greater than MAX_INDICES
 	for (int i = 0; i < num_nets; i++) {
-		int start, len;
-		fscanf(f, "%d,%d", &start, &len);
+		unsigned int start, len;
+		fscanf(f, "%04u,%04u;", &start, &len);
 		nets_buffer[i].length = len;
 		nets_buffer[i].start_index = start;
 	}
 }
 
 void fill_pointlist_from_file(FILE *f) {
-	// TODO: Make this a byte stream instead of ascii text.
-	fflush(f);
-	fscanf(f, "%d", &num_points);
+	// Flush the file
+	// fflush(f);
+	// Get the number of points from the parameter
+	fscanf(f, "(%04u):", &num_points);
 	// TODO: Panic if num_points is greater than MAX_POINTS
 	for (int i = 0; i < num_points; i++) {
-		int x, y;
-		fscanf(f, "%d,%d", &x, &y);
+		unsigned int x, y;
+		fscanf(f, "%08u,%08u;", &x, &y);
 		points_buffer[i].x = x;
 		points_buffer[i].y = y;
 	}
+}
+
+void fill_pointlist_from_bytes_usart(USART u) {
+	// int count;
+	USART_read_exact(u, (char*)&num_points, sizeof(int));
+	USART_read_exact(u, (char*)points_buffer, num_points * sizeof(NetlistPoint));
+}
+
+void fill_netlist_from_bytes_usart(USART u) {
+	USART_read_exact(u, (char*)&num_nets, sizeof(int));
+	USART_read_exact(u, (char*)nets_buffer, num_nets);
 }
 
 NetlistEntryInfo NetlistEntryInfo_slice(NetlistEntryInfo self, int from, int to) {
