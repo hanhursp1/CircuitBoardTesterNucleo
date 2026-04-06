@@ -70,27 +70,29 @@ void exec_gcode(Gcode gcode) {
              gcode.args[0].value);
       break;
     }
-    // Assert that the input is valid. Panic if not.
-    gcode_assert(gcode.num_args >= 2);
-    char id = gcode.args[1].id;
-    gcode_assert(id == 'L' || id == 'R');
+    if (s) {
+      // Assert that the input is valid. Panic if not.
+      gcode_assert(gcode.num_args >= 2);
+      char id = gcode.args[1].id;
+      gcode_assert(id == 'L' || id == 'R');
 
-    // Get the direction based on the argument id, and the number of turns
-    // based on the argument value
-    StepperDirection dir =
-        (id == 'L') ? STEPD_COUNTERCLOCKWISE : STEPD_CLOCKWISE;
-    int num_turns = gcode.args[1].value;
+      // Get the direction based on the argument id, and the number of turns
+      // based on the argument value
+      StepperDirection dir =
+          (id == 'L') ? STEPD_COUNTERCLOCKWISE : STEPD_CLOCKWISE;
+      int num_turns = gcode.args[1].value;
 
-    // Alert the user over USART stdout
-    printf("Turning %s %s %d ticks...\n", stepper_name,
-           (dir == STEPD_CLOCKWISE) ? "clockwise" : "counterclockwise",
-           num_turns);
-    fflush(stdout);
-    // Set the direction of the stepper
-    Stepper_set_direction(s, dir);
-    // Actually rotate the stepper
-    for (int i = 0; i < num_turns; i++) {
-      Stepper_step_immediate(s);
+      // Alert the user over USART stdout
+      printf("Turning %s %s %d ticks...\n", stepper_name,
+             (dir == STEPD_CLOCKWISE) ? "clockwise" : "counterclockwise",
+             num_turns);
+      fflush(stdout);
+      // Set the direction of the stepper
+      Stepper_set_direction(s, dir);
+      // Actually rotate the stepper
+      for (int i = 0; i < num_turns; i++) {
+        Stepper_step_immediate(s);
+      }
     }
   } break;
   case 'G': {
