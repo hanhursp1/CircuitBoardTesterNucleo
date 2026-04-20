@@ -2,6 +2,8 @@
 #include "i2c.h"
 #include "stm32f446xx.h"
 #include "stm32f4xx.h"
+#include <stddef.h>
+#include <stdint.h>
 
 // Initialize I2C1 (PB8 = SCL, PB9 = SDA)
 I2C I2C1_Init(void) {
@@ -30,7 +32,7 @@ I2C I2C1_Init(void) {
 }
 
 // Write one byte to an I2C device register
-void I2C_Write(I2C i2c, uint8_t addr, uint8_t reg, uint8_t data) {
+void I2C_Write(I2C i2c, uint8_t addr, uint8_t data) {
   i2c->CR1 |= 0x0100; // START
   while (!(i2c->SR1 & 1))
     ;
@@ -40,14 +42,33 @@ void I2C_Write(I2C i2c, uint8_t addr, uint8_t reg, uint8_t data) {
     ;
   (void)i2c->SR2;
 
-	// Write the data byte to the i2c interface data register
-  while (!(i2c->SR1 & 0x80))
-    ;
-  i2c->DR = reg;
-
+  // Write the data byte to the i2c interface data register
   while (!(i2c->SR1 & 0x80))
     ;
   i2c->DR = data;
+
+  while (!(i2c->SR1 & 4))
+    ;
+
+  i2c->CR1 |= 0x0200; // STOP
+}
+
+void I2C_Write_many(I2C i2c, uint8_t addr, uint8_t data[], size_t len) {
+  i2c->CR1 |= 0x0100; // START
+  while (!(i2c->SR1 & 1))
+    ;
+
+  i2c->DR = addr << 1; // Address + write
+  while (!(i2c->SR1 & 2))
+    ;
+  (void)i2c->SR2;
+
+  // Write every data byte to the i2c interface data register
+  while (len--) {
+    while (!(i2c->SR1 & 0x80))
+      ;
+    i2c->DR = *(data++);
+  }
 
   while (!(i2c->SR1 & 4))
     ;

@@ -2,6 +2,8 @@
 
 #include "config.h"
 
+#define PI 3.14159265359
+
 typedef enum bool {
 	false, true
 } bool;
