@@ -1,5 +1,6 @@
 #include "gcodes.h"
 #include "instructions.h"
+#include "probe.h"
 #include "servo.h"
 #include "stm32f446xx.h"
 #include "stm32f4xx.h"
@@ -24,12 +25,30 @@
 
 void LED_Init();
 
-Stepper test_stepper;
+// Stepper test_stepper;
 
 
 
-Servo servo_L;
-Servo servo_R;
+// Servo servo_L;
+// Servo servo_R;
+
+// TODO: completely intialize with full GPIO layout
+ProbeSet probes = {
+	.left = {
+		// TODO: Servo, GPIO
+		.rail = {
+			.io = {
+				.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
+			},
+		}
+	},
+	.right = {
+		// TODO: Servo, Stepper, GPIO
+	},
+	.bed = {
+		// TODO: GPIO, Stepper
+	}
+};
 
 int main(void) {
   // Init Hardware Abstraction Layer
@@ -45,10 +64,10 @@ int main(void) {
   // Initialize USB serial, which also initializes the stdout and stdin
   USB_init();
 
-  test_stepper.io = (StepperIO){
-  	.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
-  };
-  Stepper_init_simplified(&test_stepper);
+  // test_stepper.io = (StepperIO){
+  // 	.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
+  // };
+  Stepper_init_simplified(&probes.left.rail);
 
   // HAL_Delay(100);
 

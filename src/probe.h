@@ -34,3 +34,4 @@ typedef struct ProbeSet {
 	Bed bed;
 } ProbeSet;
 
+extern ProbeSet probes;

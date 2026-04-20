@@ -12,7 +12,7 @@ DEF_INSTR(vertcnt) {
   } else if (found == 2) {
     // TODO: Check hash
   }
-	// TODO: set vert count info
+  // TODO: set vert count info
   return 0;
 }
 
@@ -25,7 +25,7 @@ DEF_INSTR(netcnt) {
   } else if (found == 2) {
     // TODO: Check hash
   }
-	// TODO set net count info
+  // TODO set net count info
   return 0;
 }
 
@@ -37,34 +37,34 @@ DEF_INSTR(vert) {
     can_you_repeat_that(f);
     return -1;
   }
-	// TODO: Set vertex info
-	return 0;
+  // TODO: Set vertex info
+  return 0;
 }
 
 DEF_INSTR(net) {
-	int id, x, y, hash;
+  int id, x, y, hash;
   int found = fscanf(f, "%04d:%d,%d:%x;", &id, &x, &y, &hash);
   if (found < 3) {
     /* TODO: Panic */
     can_you_repeat_that(f);
     return -1;
   }
-	// TODO: Set net info
-	return 0;
+  // TODO: Set net info
+  return 0;
 }
 
 DEF_INSTR(echo) {
-	// TODO: Print out all vertex and index info to the client
-	return 0;
+  // TODO: Print out all vertex and index info to the client
+  return 0;
 }
 
 DEF_INSTR(run) {
-	// TODO: Actually start a run
-	return 0;
+  // TODO: Actually start a run
+  return 0;
 }
 
-Instruction *instructions[] = {&INSTR(vertcnt), &INSTR(netcnt), &INSTR(vert),
-                               &INSTR(net), &INSTR(echo)};
+const Instruction *const instructions[] = {
+    &INSTR(vertcnt), &INSTR(netcnt), &INSTR(vert), &INSTR(net), &INSTR(echo)};
 
 #define INSTR_COUNT (sizeof(instructions) / sizeof(Instruction *))
 
