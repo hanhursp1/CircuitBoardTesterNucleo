@@ -1,5 +1,6 @@
 
 // required define for cookies
+#include <stdarg.h>
 #define _GNU_SOURCE
 
 #include "usart.h"
@@ -106,9 +107,10 @@ int USART_write_string(USART u, const char *str) {
 }
 
 int USART_write_string_debug(USART u, const char *str) {
-	const static char* dbg_prefix = "dbg!(0000):";
+	const static char* dbg_prefix = "!dbg:";
 	int i = USART_write_string(u, dbg_prefix);
-	return i + USART_write_string(u, str);
+	i += USART_write_string(u, str);
+	return i + USART_write_string(u, ";\n");
 }
 
 int USART_write_string_len(USART u, const char* str, size_t size) {
@@ -131,7 +133,7 @@ int USART_read_string(USART u, char *buffer, int len) {
 			#endif
       // MUST have a null terminator
       buffer[i] = '\0';
-      return i + 1; // We did not exceed `len`
+      return i; // We did not exceed `len`
     }
 		#ifdef ECHO_MODE
     // Else if we got a backspace, print a backspace and then continue
@@ -142,6 +144,9 @@ int USART_read_string(USART u, char *buffer, int len) {
     }
 		#endif
 		else {
+			#ifdef ECHO_MODE
+			USART_write(u, data);
+			#endif
       buffer[i] = data;
     }
   }
@@ -175,7 +180,13 @@ ssize_t USART_Cookie_read(void* cookie, char* buf, size_t size) {
 		return size;
 	} else 
 	#endif
-	return USART_read_string((USART)cookie, buf, size);
+	// DBG("Reading buffer...");
+	ssize_t x = USART_read_string((USART)cookie, buf, size);
+	char dbg_str[1024];
+	sprintf(dbg_str, "!dbg:%s;", buf);
+	USART_write_string(USB_USART, dbg_str);
+	// printf("!dbg:%s (Len: %d);", buf, x);
+	return x;
 }
 
 ssize_t USART_Cookie_write(void* cookie, const char* buf, size_t size) {

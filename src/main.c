@@ -1,4 +1,5 @@
 #include "gcodes.h"
+#include "i2c.h"
 #include "instructions.h"
 #include "probe.h"
 #include "servo.h"
@@ -25,25 +26,31 @@
 
 void LED_Init();
 
-// Stepper test_stepper;
+// The Servo motor board
+PCA9685 board = {
+	.addr = 0x40,
+	.prescaler = 121
+};
 
-
-
-// Servo servo_L;
-// Servo servo_R;
-
+// The probes and their associated I/O
 // TODO: completely intialize with full GPIO layout
 ProbeSet probes = {
 	.left = {
-		// TODO: Servo, GPIO
+		// TODO: GPIO
 		.rail = {
 			.io = {
 				.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
 			},
+		},
+		.axis = {
+			.board = &board, .channel = 0, .range_max = 430, .range_min = 185
 		}
 	},
 	.right = {
 		// TODO: Servo, Stepper, GPIO
+		.axis = {
+			.board = &board, .channel = 1, .range_max = 430, .range_min = 185
+		}
 	},
 	.bed = {
 		// TODO: GPIO, Stepper
@@ -57,6 +64,7 @@ int main(void) {
   __HAL_RCC_GPIOB_CLK_ENABLE();
   // Init LED for lights and stuff :)
   LED_Init();
+	// board.i2c = I2C1_Init();
 
   // Do a delay before working any further (fixes something, I forget what.)
   HAL_Delay(1000);
@@ -67,31 +75,19 @@ int main(void) {
   // test_stepper.io = (StepperIO){
   // 	.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
   // };
-  Stepper_init_simplified(&probes.left.rail);
+  // Stepper_init_simplified(&probes.left.rail);
+	board.i2c = I2C1_Init();
 
-  // HAL_Delay(100);
+	PCA9685_Init(&board);
 
-  // Stepper_set_direction(&test_stepper, STEPD_CLOCKWISE);
-
-  // // Prompt the user for a gcode instruction, and then execute it.
-  // while (true) {
-  // 	printf("Enter an instruction: ");
-
-  // 	// Decode the next valid instruction and then flush the USART
-  // 	Gcode test = gcode_decode(stdin);
-  // 	USART_flush(USB_USART);
-
-  // 	// Print the commmand we got
-  // 	printf("Got %d args: ", test.num_args);
-  // 	for (int i = 0; i < test.num_args; i++) {
-  // 		printf("%c%d ", test.args[i].id, test.args[i].value);
-  // 	}
-  // 	printf("\n");
-  // 	// Run the command
-  // 	exec_gcode(test);
-  // }
-
-
+	printf("Hello world!\n");
+	char stuff[1024];
+	USART_flush(USB_USART);
+	fflush(stdin);
+	scanf("%s", stuff);
+	fflush(stdin);
+	printf("Got: %s\n", stuff);
+	fflush(stdout);
 
   while (true) {
     fflush(stdin);

@@ -20,3 +20,4 @@
 
 // #define USE_IRQ
 
+#define STEPS_PER_MM

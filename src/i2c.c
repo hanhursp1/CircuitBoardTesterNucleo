@@ -7,6 +7,8 @@
 
 // Initialize I2C1 (PB8 = SCL, PB9 = SDA)
 I2C I2C1_Init(void) {
+	RCC->APB1ENR |= 0x00200000;   // I2C1 clock enable
+
   GPIOB->MODER &= ~0x000F0000;
   GPIOB->MODER |= 0x000A0000;
 
