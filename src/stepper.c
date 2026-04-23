@@ -7,7 +7,7 @@
 
 #pragma region Global Variable Definitions
 // This is non-constant to allow it to be updated from a config function.
-int um_per_step = 100;
+int um_per_step = DEFAULT_UM_PER_STEP;
 
 // Stepper movement queue to be iterated over each interrupt
 StepperQueueEntry stepper_queue[MAX_STEPPERS] = {0};

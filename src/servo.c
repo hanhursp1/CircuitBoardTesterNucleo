@@ -57,6 +57,15 @@ void Servo_set_value(Servo *servo, float value) {
   PCA9685_write(servo->board, base_register + 3, (value_u >> 8) & 0xFF);
 }
 
+void Servo_set_value_direct(Servo *servo, uint16_t value) {
+  uint8_t base_register = PWM_REGISTER(servo->channel);
+
+  PCA9685_write(servo->board, base_register, 0);
+  PCA9685_write(servo->board, base_register + 1, 0);
+  PCA9685_write(servo->board, base_register + 2, value & 0xFF);
+  PCA9685_write(servo->board, base_register + 3, (value >> 8) & 0xFF);
+}
+
 void Servo_update(Servo *servo) {
   if (servo->value > SERVO_MAX)
     servo->value = SERVO_MAX;

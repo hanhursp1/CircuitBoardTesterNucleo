@@ -20,4 +20,10 @@
 
 // #define USE_IRQ
 
-#define STEPS_PER_MM
+#define DEFAULT_UM_PER_STEP 100
+
+// Rail offset to the edge of the probe area
+#define RAIL_OFFSET_L 100000
+#define RAIL_OFFSET_R 100000
+#define PROBE_LEN 1500000
+#define BED_HIGH_UM 100000

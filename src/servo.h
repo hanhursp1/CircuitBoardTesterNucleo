@@ -39,6 +39,7 @@ void PCA9685_Init(PCA9685* board);
 void PCA9685_SetPWM(PCA9685* board, uint8_t ch, uint16_t off);
 
 void Servo_set_value(Servo* servo, float target);
+void Servo_set_value_direct(Servo *servo, uint16_t value);
 void Servo_set_target(Servo* servo, float target);
 void Servo_update(Servo* servo);
 

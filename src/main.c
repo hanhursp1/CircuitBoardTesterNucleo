@@ -1,4 +1,3 @@
-#include "gcodes.h"
 #include "i2c.h"
 #include "instructions.h"
 #include "probe.h"
@@ -76,18 +75,13 @@ int main(void) {
   // 	.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
   // };
   // Stepper_init_simplified(&probes.left.rail);
-	board.i2c = I2C1_Init();
+	// board.i2c = I2C1_Init();
 
-	PCA9685_Init(&board);
+	// PCA9685_Init(&board);
+	
 
 	printf("Hello world!\n");
-	char stuff[1024];
-	USART_flush(USB_USART);
-	fflush(stdin);
-	scanf("%s", stuff);
-	fflush(stdin);
-	printf("Got: %s\n", stuff);
-	fflush(stdout);
+
 
   while (true) {
     fflush(stdin);

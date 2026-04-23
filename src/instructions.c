@@ -15,7 +15,7 @@ void can_you_repeat_that(FILE *f) { fprintf(f, "!repeat:;"); }
 
 DEF_INSTR(vertcnt) {
   int cnt, hash;
-  int found = fscanf(f, "%d:%x;", &cnt, &hash);
+  int found = fscanf(f, "%d:%x", &cnt, &hash);
   if (found < 1) {
     can_you_repeat_that(f);
     return -1;
@@ -28,7 +28,7 @@ DEF_INSTR(vertcnt) {
 
 DEF_INSTR(netcnt) {
   int cnt, hash;
-  int found = fscanf(f, "%d:%x;", &cnt, &hash);
+  int found = fscanf(f, "%d:%x", &cnt, &hash);
   if (found < 1) {
     can_you_repeat_that(f);
     return -1;
@@ -41,7 +41,7 @@ DEF_INSTR(netcnt) {
 
 DEF_INSTR(vert) {
   int id, x, y, hash;
-  int found = fscanf(f, "%04d:%d,%d:%x;", &id, &x, &y, &hash);
+  int found = fscanf(f, "%04d:%d,%d:%x", &id, &x, &y, &hash);
   if (found < 3) {
     /* TODO: Panic */
     can_you_repeat_that(f);
@@ -53,7 +53,7 @@ DEF_INSTR(vert) {
 
 DEF_INSTR(net) {
   int id, x, y, hash;
-  int found = fscanf(f, "%04d:%d,%d:%x;", &id, &x, &y, &hash);
+  int found = fscanf(f, "%04d:%d,%d:%x", &id, &x, &y, &hash);
   if (found < 3) {
     /* TODO: Panic */
     can_you_repeat_that(f);
@@ -73,9 +73,19 @@ DEF_INSTR(run) {
   return 0;
 }
 
+DEF_INSTR(movprobe) {
+	int probeid;
+	int x, y;
+	fscanf(f, "%d:%d,%d", &probeid, &x, &y);
+	Probe* probe = (probeid) ? &probes.right : &probes.left;
+	Side side = (probeid) ? Right : Left;
+	Probe_to_location(probe, Probe_calculate_position(side, x, y));
+	return 0;
+}
+
 DEF_INSTR(stepper) {
   int id, steps;
-  int found = fscanf(f, "%d:%d;", &id, &steps);
+  int found = fscanf(f, "%d:%d", &id, &steps);
   assert(found == 2);
   Stepper *stepper = (id) ? &probes.left.rail : &probes.right.rail;
   StepperDirection dir = STEPD_CLOCKWISE;
@@ -94,64 +104,66 @@ DEF_INSTR(stepper) {
 DEF_INSTR(servo) {
   int id;
   int deg;
-  int found = fscanf(f, "%d:%d;", &id, &deg);
+  int found = fscanf(f, "%d:%d", &id, &deg);
   // assert(found == 2);
   Servo *servo = (id) ? &probes.left.axis : &probes.right.axis;
   float rad = ((float)deg / 360.0) * 2 * PI;
-	uint16_t step = _Servo_lerp(servo->range_min, servo->range_max, rad);
-	printf("!dbg:%d:%.2f:%hd;\n", id, rad, step);
+  uint16_t step = _Servo_lerp(servo->range_min, servo->range_max, rad);
+  printf("!dbg:%d:%.2f:%hd;\n", id, rad, step);
   servo->target = rad;
   while (!Servo_rotate_delta(servo, 0.005)) {
-		printf("!dbg:%d:%d;\n", (int)(1000 * servo->value), (int)(1000 * servo->target));
+    printf("!dbg:%d:%d;\n", (int)(1000 * servo->value),
+           (int)(1000 * servo->target));
     HAL_Delay(10);
   };
   return 0;
 }
 
+DEF_INSTR(servodirect) {
+  int id;
+  int val;
+  int found = fscanf(f, "%d:%d", &id, &val);
+  // assert(found == 2);
+  Servo *servo = (id) ? &probes.left.axis : &probes.right.axis;
+  Servo_set_value_direct(servo, val);
+  return 0;
+}
+
 DEF_INSTR(led) {
-  fscanf(f, ";");
+  // fscanf(f, ";");
   HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-	printf("!dbg:LED Toggled!;\n");
+  printf("!dbg:LED Toggled!;\n");
   return 0;
 }
 
 const Instruction *const instructions[] = {
     &INSTR(vertcnt), &INSTR(netcnt),  &INSTR(vert),  &INSTR(net),
-    &INSTR(echo),    &INSTR(stepper), &INSTR(servo), &INSTR(led)};
+    &INSTR(echo),    &INSTR(stepper), &INSTR(servo), &INSTR(servodirect),
+    &INSTR(led),     &INSTR(movprobe)};
 
 #define INSTR_COUNT (sizeof(instructions) / sizeof(Instruction *))
 
 int execute_instruction(FILE *f) {
   char instr[128];
-	
-	while (fgetc(f) != '!') {}
-	// printf("Parsing command: ");
-	char c;
-	int i = 0;
-	while ((c = fgetc(f)) != ':') {
-		instr[i++] = c;
-	}
 
-  // if (FETCH_INSTR(f, instr) < 1) {
-  //   // Failed to fetch an instruction, do something
-	// 	printf("Failed to fetch instruction!");
-  //   return -1;
-  // }
-	// printf("!dbg:%s;\n", instr);
+  fscanf(f, "!%[^\n\r:;]", instr);
+  DBG(instr);
+
   for (int i = 0; i < INSTR_COUNT; i++) {
     // Assume an instruction is valid if its callback is not null
     // If the ID matches, execute the instruction, passing the file stream
     if (instructions[i]->callback && !strcmp(instructions[i]->id, instr)) {
       int result = instructions[i]->callback(f);
-			switch (result) {
-				case 0: {
-					printf("!ok:;");
-				} break;
-				case -1: {
-					printf("!err:;");
-				}
-			}
-			return result;
+			fscanf(f, ";");
+      switch (result) {
+      case 0: {
+        printf("!ok;");
+      } break;
+      case -1: {
+        printf("!err;");
+      }
+      }
+      return result;
     }
   }
   can_you_repeat_that(f);
