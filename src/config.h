@@ -1,5 +1,7 @@
 #pragma once
 
+#define DEBUG_ENABLED
+
 // Maximum number of points in the netlist buffer
 #define MAX_POINTS 4096
 

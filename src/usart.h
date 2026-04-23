@@ -28,4 +28,8 @@ void USART_write_exact(USART u, const char* buffer, int len);
 FILE* USART_fopen(USART u);
 
 int USART_write_string_debug(USART u, const char* str);
+#ifdef DEBUG_ENABLED
 #define DBG(s) USART_write_string_debug(USB_USART, s)
+#else
+#define DBG(s)
+#endif

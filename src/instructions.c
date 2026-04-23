@@ -144,9 +144,11 @@ const Instruction *const instructions[] = {
 #define INSTR_COUNT (sizeof(instructions) / sizeof(Instruction *))
 
 int execute_instruction(FILE *f) {
-  char instr[128];
+  char instr[128] = {0};
 
+	// Read instruction from file stream
   fscanf(f, "!%[^\n\r:;]", instr);
+	// DEBUG: echo instruction over the UART
   DBG(instr);
 
   for (int i = 0; i < INSTR_COUNT; i++) {

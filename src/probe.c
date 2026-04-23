@@ -62,6 +62,10 @@ ProbePosition Probe_calculate_position(Side side, uint32_t x, uint32_t y) {
   return result;
 }
 
+void Probe_to_location(Probe* probe, ProbePosition position) {
+	// TODO
+}
+
 bool ProbeSet_test_continuity(ProbeSet *probes) {
   // Assume the left probe is connected to vdd
   return HAL_GPIO_ReadPin(probes->right.io.gpio, probes->right.io.probe_pin) ==
