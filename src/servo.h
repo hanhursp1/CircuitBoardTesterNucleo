@@ -11,10 +11,10 @@
 #define MODE2_REG 					0x01
 #define PRESCALER_REG 			0xFE
 
-#define SERVO_MIN						0.0				// Minimum servo range (0 radians)
-#define SERVO_MAX						(PI / 2)	// Maximum servo range (approx 1.57 radians, i.e. one half rotation)
-
-// TODO: Reprocess servo code to utilize floats
+// TODO: Actually measure servo min and max angles.
+// Our servos are from the range of 0 to 120 degrees. Our calculations work in radians
+#define SERVO_MIN						0.0				// Minimum servo range (0 degrees)
+#define SERVO_MAX						(PI * (0.5))	// Maximum servo range (approx 120 degrees)
 
 typedef struct PCA9685 {
 	I2C i2c;

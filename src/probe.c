@@ -1,7 +1,10 @@
 #include "probe.h"
+#include "common.h"
 #include "config.h"
+#include "i2c.h"
 #include "servo.h"
 #include "stepper.h"
+#include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_gpio.h"
 #include <math.h>
 
@@ -48,34 +51,80 @@ void ProbeSet_init(ProbeSet *probes) {
   }
 }
 
-ProbePosition Probe_calculate_position(Side side, uint32_t x, uint32_t y) {
+ProbePosition Probe_calculate_position(Probe *probe, uint32_t x, uint32_t y) {
   ProbePosition result;
   // TODO: Test if this works
-  // Calculate angle from requested X position
-  float arm_x_rel = ((float)x + (float)RAIL_OFFSET_L) / (float)PROBE_LEN;
-  result.rotation = acosf(arm_x_rel);
-  // Calculate relative servo offset from requested X position
-  float arm_y_rel = sinf(result.rotation);
-  // Calculate absolute servo offset from requested Y position
-  result.position = y - (PROBE_LEN * arm_y_rel);
+
+	switch(probe->side) {
+		case Left: {
+
+		} break;
+		case Right: {
+
+		} break;
+	}
+
   // Return position
   return result;
 }
 
-void Probe_to_location(Probe* probe, ProbePosition position) {
-	// TODO
+void Probe_to_position_pair(Probe *probe, ProbePosition position) {
+  // TODO: Test this
+  // Cache the axis and rail from the probe
+  Servo *axis = &probe->axis;
+  Stepper *rail = &probe->rail;
+  // Move the stepper to its proper location
+  Stepper_move_to_immediate(rail, position.position);
+  // Set the servo's target position
+  Servo_set_target(axis, position.rotation);
+  // Update the servo rotation at 20ms tick intervals
+  while (!Servo_at_destination(axis)) {
+    Servo_rotate_delta(axis, 0.02);
+    HAL_Delay(20);
+  }
+}
+
+void Probe_set_position(Probe *probe, uint32_t x, uint32_t y) {
+  // TODO: Test this
+  probe->x = x;
+  probe->y = y;
+  ProbePosition p = Probe_calculate_position(probe, x, y);
+  Probe_to_position_pair(probe, p);
 }
 
 bool ProbeSet_test_continuity(ProbeSet *probes) {
-  // Assume the left probe is connected to vdd
-  return HAL_GPIO_ReadPin(probes->right.io.gpio, probes->right.io.probe_pin) ==
-         1;
+  // Check which probe is the continuity pin by which has a non-zero probe_pin
+  Probe *probe = (probes->right.io.probe_pin) ? &probes->right : &probes->left;
+  return HAL_GPIO_ReadPin(probe->io.gpio, probe->io.probe_pin) == 1;
 }
 
 void ProbeSet_lower_bed(ProbeSet *probes) {
-  Stepper_move_to(&probes->bed.stepper, 0);
+  Stepper_move_to_immediate(&probes->bed.stepper, 0);
 }
 
 void ProbeSet_raise_bed(ProbeSet *probes) {
-  Stepper_move_to(&probes->bed.stepper, BED_HIGH_UM);
+  Stepper_move_to_immediate(&probes->bed.stepper, BED_HIGH_UM);
+}
+
+Stepper *ProbeSet_get_stepper_by_id(ProbeSet *probes, int id) {
+  switch (id) {
+  case 0:
+    return &probes->right.rail;
+  case 1:
+    return &probes->left.rail;
+  case 2:
+    return &probes->bed.stepper;
+  default:
+    return NULL;
+  }
+}
+Servo *ProbeSet_get_servo_by_id(ProbeSet *probes, int id) {
+  switch (id) {
+  case 0:
+    return &probes->right.axis;
+  case 1:
+    return &probes->left.axis;
+  default:
+    return NULL;
+  }
 }

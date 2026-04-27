@@ -1,3 +1,4 @@
+#include "estop.h"
 #include "i2c.h"
 #include "instructions.h"
 #include "probe.h"
@@ -25,6 +26,11 @@
 
 void LED_Init();
 
+bool ESTOP_Callback() {
+	USART_write_string(USB_USART, "!err:ESTOP;");
+	return false;
+}
+
 // The Servo motor board
 PCA9685 board = {
 	.addr = 0x40,
@@ -35,24 +41,47 @@ PCA9685 board = {
 // TODO: completely intialize with full GPIO layout
 ProbeSet probes = {
 	.left = {
-		// TODO: GPIO
+		// TODO: Other GPIO
 		.rail = {
 			.io = {
-				.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
+				.gpio = GPIOB, .step = GPIO_PIN_2, .dir = GPIO_PIN_3
 			},
 		},
 		.axis = {
 			.board = &board, .channel = 0, .range_max = 430, .range_min = 185
+		},
+		.side = Left,
+		.io = {
+			.gpio = GPIOC,
+			.probe_pin = GPIO_PIN_5,
+			.homing_pin = GPIO_PIN_6
 		}
 	},
 	.right = {
-		// TODO: Servo, Stepper, GPIO
+		// TODO: Other GPIO
+		.rail = {
+			.io = {
+				.gpio = GPIOB, .step = GPIO_PIN_0, .dir = GPIO_PIN_1
+			}
+		},
 		.axis = {
 			.board = &board, .channel = 1, .range_max = 430, .range_min = 185
+		},
+		.side = Right,
+		.io = {
+			.gpio = GPIOC,
+			.probe_pin = 0,
+			.homing_pin = GPIO_PIN_8
 		}
 	},
 	.bed = {
-		// TODO: GPIO, Stepper
+		// TODO: Other GPIO
+		.stepper = {
+			.io = {
+				.gpio = GPIOB, .step = GPIO_PIN_4, .dir = GPIO_PIN_5
+			}
+		}
+		
 	}
 };
 
@@ -64,6 +93,7 @@ int main(void) {
   // Init LED for lights and stuff :)
   LED_Init();
 	// board.i2c = I2C1_Init();
+	ESTOP_init();
 
   // Do a delay before working any further (fixes something, I forget what.)
   HAL_Delay(1000);
@@ -74,11 +104,13 @@ int main(void) {
   // test_stepper.io = (StepperIO){
   // 	.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
   // };
-  // Stepper_init_simplified(&probes.left.rail);
-	// board.i2c = I2C1_Init();
+	Stepper_init_simplified(&probes.right.rail);
+  Stepper_init_simplified(&probes.left.rail);
+	board.i2c = I2C1_Init();
 
-	// PCA9685_Init(&board);
+	PCA9685_Init(&board);
 	
+	// TODO: Finalize main loop implementation
 
 	printf("Hello world!\n");
 

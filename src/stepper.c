@@ -33,7 +33,7 @@ bool valid_stepper_simplified_io(StepperIO* io) {
 void Stepper_step_immediate(Stepper* self) {
 	HAL_GPIO_TogglePin(self->io.gpio, self->io.step);
 
-	// TODO: Make this delay shorter somehow. Maybe add a custom timer implementation?
+	// TODO?: Make this delay shorter somehow. Maybe add a custom timer implementation?
 	HAL_Delay(1);
 
 	HAL_GPIO_TogglePin(self->io.gpio, self->io.step);
@@ -45,7 +45,6 @@ void Stepper_step_immediate(Stepper* self) {
 void Stepper_set_mode(Stepper* self, StepperMode mode) {
 	assert(!self->is_simplified);
 	self->mode = mode;
-	// TODO: update pins
 
 	HAL_GPIO_WritePin(self->io.gpio, self->io.ms1, (mode & 0b001) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(self->io.gpio, self->io.ms2, (mode & 0b010) ? GPIO_PIN_SET : GPIO_PIN_RESET);
@@ -59,7 +58,7 @@ void Stepper_set_direction(Stepper* self, StepperDirection sd) {
 
 void Stepper_init(Stepper *self) {
 	assert(valid_stepper_io(&self->io));
-	// TODO: Add initialization, setup GPIO
+	// TODO?: Add initialization, setup GPIO
 	self->is_simplified = false;
 
 	GPIO_InitTypeDef init;
@@ -87,9 +86,12 @@ void Stepper_init_simplified(Stepper *self) {
 }
 
 void Stepper_move_to(Stepper *self, uint32_t position) {
+	// Used to be an asynchronous stepper mover implementation.
+	// Now it's an alias for `Stepper_move_to_immediate`
+	/*
 	bool is_lesser = self->position < position;
 	// Move down if it is, move up if it's not
-	// TODO: Test this
+	// TODO?: Test this
 	StepperDirection dir = (is_lesser) ? STEPD_BACKWARDS : STEPD_FORWARDS;
 
 	// We cast these to int32_t so that the subtraction is signed
@@ -99,13 +101,14 @@ void Stepper_move_to(Stepper *self, uint32_t position) {
 	// Queue up the required number of steps
 	// This assert shouldn't be necessary, but it also shouldn't be not necessary
 	assert(Stepper_queue_steps(self, num_steps, dir));
+	*/
+	Stepper_move_to_immediate(self, position);
 }
 
 void Stepper_move_to_immediate(Stepper* self, uint32_t position) {
 	bool is_lesser = self->position < position;
 	// Move down if it is, move up if it's not
-	// TODO: Test this
-	StepperDirection dir = (is_lesser) ? STEPD_COUNTERCLOCKWISE : STEPD_CLOCKWISE;
+	StepperDirection dir = (is_lesser) ? STEPD_BACKWARDS : STEPD_FORWARDS;
 	Stepper_set_direction(self, dir);
 
 	// We cast these to int32_t so that the subtraction is signed
@@ -115,6 +118,8 @@ void Stepper_move_to_immediate(Stepper* self, uint32_t position) {
 	for (int i = 0; i < num_steps; i++) {
 		Stepper_step_immediate(self);
 	}
+
+	self->position = position;
 }
 
 bool Stepper_queue_steps(Stepper *self, uint32_t step_count, StepperDirection dir) {

@@ -24,7 +24,7 @@ void PCA9685_set_prescaler(PCA9685 *board, uint8_t prescaler) {
 }
 
 void PCA9685_Init(PCA9685 *board) {
-  // TODO: Remove magic numbers, make everything easier to understand
+  // TODO?: Remove magic numbers, make everything easier to understand
   PCA9685_sleep(board); // Set board to sleep
   PCA9685_set_prescaler(
       board, (board->prescaler)
@@ -41,6 +41,7 @@ void PCA9685_Init(PCA9685 *board) {
 // the target (between `SERVO_MIN` and `SERVO_MAX`)
 uint16_t _Servo_lerp(uint16_t a, uint16_t b, float t) {
   t = (t - SERVO_MIN) / (SERVO_MAX - SERVO_MIN);
+	t = 1.0 - t;	// Invert t because we're mapping in an inverse range
   return a + (uint16_t)(t * (float)(b - a));
 }
 

@@ -8,10 +8,13 @@
 #include "stm32f4xx_hal_gpio.h"
 #include "usart.h"
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 void can_you_repeat_that(FILE *f) { fprintf(f, "!repeat:;"); }
+
+// TODO: Add commments to instructions that need them
 
 DEF_INSTR(vertcnt) {
   int cnt, hash;
@@ -74,23 +77,55 @@ DEF_INSTR(run) {
 }
 
 DEF_INSTR(movprobe) {
-	int probeid;
-	int x, y;
-	fscanf(f, "%d:%d,%d", &probeid, &x, &y);
-	Probe* probe = (probeid) ? &probes.right : &probes.left;
-	Side side = (probeid) ? Right : Left;
-	Probe_to_location(probe, Probe_calculate_position(side, x, y));
-	return 0;
+  int probeid;
+  int x, y;
+  fscanf(f, "%d:%d,%d", &probeid, &x, &y);
+  Probe *probe = (probeid) ? &probes.left : &probes.right;
+  // Side side = (probeid) ? Right : Left;
+  Probe_set_position(probe, x, y);
+  return 0;
+}
+
+DEF_INSTR(probepos) {
+  int probeid;
+  fscanf(f, "%d", &probeid);
+  Probe *probe = (probeid) ? &probes.left : &probes.right;
+  fprintf(f, "!ok:%d,%d;\n", probe->x, probe->y);
+  return 1;
+}
+
+// Returns servo rotation, in radians
+DEF_INSTR(servrot) {
+  int probeid;
+  fscanf(f, "%d", &probeid);
+  Probe *probe = (probeid) ? &probes.left : &probes.right;
+  float proberot = probe->axis.value;
+  int whole = floorf(proberot);
+  proberot -= whole;
+  int fract = floorf(proberot * 100.0);
+  fprintf(f, "!ok:%d.%02d;", whole, fract);
+  return 1;
 }
 
 DEF_INSTR(stepper) {
+  int stepid;
+  int pos;
+  volatile int found = fscanf(f, "%d:%d", &stepid, &pos);
+  volatile Stepper *stepper = ProbeSet_get_stepper_by_id(&probes, stepid);
+	assert(stepper);
+  Stepper_move_to_immediate(stepper, pos);
+  return 0;
+}
+
+DEF_INSTR(stepperdirect) {
   int id, steps;
-  int found = fscanf(f, "%d:%d", &id, &steps);
-  assert(found == 2);
-  Stepper *stepper = (id) ? &probes.left.rail : &probes.right.rail;
-  StepperDirection dir = STEPD_CLOCKWISE;
+  volatile int found = fscanf(f, "%d:%d", &id, &steps);
+  // assert(found == 2);
+  Stepper *stepper = ProbeSet_get_stepper_by_id(&probes, id);
+	assert(stepper);
+  StepperDirection dir = STEPD_FORWARDS;
   if (steps < 0) {
-    dir = STEPD_COUNTERCLOCKWISE;
+    dir = STEPD_BACKWARDS;
     steps = -steps;
   }
   Stepper_set_direction(stepper, dir);
@@ -114,6 +149,7 @@ DEF_INSTR(servo) {
   while (!Servo_rotate_delta(servo, 0.005)) {
     printf("!dbg:%d:%d;\n", (int)(1000 * servo->value),
            (int)(1000 * servo->target));
+		fflush(stdout);
     HAL_Delay(10);
   };
   return 0;
@@ -137,33 +173,48 @@ DEF_INSTR(led) {
 }
 
 const Instruction *const instructions[] = {
-    &INSTR(vertcnt), &INSTR(netcnt),  &INSTR(vert),  &INSTR(net),
-    &INSTR(echo),    &INSTR(stepper), &INSTR(servo), &INSTR(servodirect),
-    &INSTR(led),     &INSTR(movprobe)};
+    &INSTR(vertcnt),       &INSTR(netcnt),   &INSTR(vert),
+    &INSTR(net),           &INSTR(echo),     &INSTR(stepper),
+    &INSTR(stepperdirect), &INSTR(servo),    &INSTR(servodirect),
+    &INSTR(led),           &INSTR(movprobe), &INSTR(servrot),
+    &INSTR(probepos)};
 
 #define INSTR_COUNT (sizeof(instructions) / sizeof(Instruction *))
 
 int execute_instruction(FILE *f) {
   char instr[128] = {0};
 
-	// Read instruction from file stream
-  fscanf(f, "!%[^\n\r:;]", instr);
-	// DEBUG: echo instruction over the UART
+  // Try and get to the command field start ('!').
+  // This is hacky and uses the USART directly because
+  // fgetc kept stalling
+  while (USART_read(USB_USART) != '!')
+    ;
+
+  // Read instruction from file stream
+  fscanf(f, "%[^\n\r:;]:", instr);
+  // DEBUG: echo instruction over the UART
   DBG(instr);
 
   for (int i = 0; i < INSTR_COUNT; i++) {
-    // Assume an instruction is valid if its callback is not null
+    // Assume an instruction is valid if it and its callback are not null
     // If the ID matches, execute the instruction, passing the file stream
-    if (instructions[i]->callback && !strcmp(instructions[i]->id, instr)) {
+    if (instructions[i] && instructions[i]->callback &&
+        !strcmp(instructions[i]->id, instr)) {
       int result = instructions[i]->callback(f);
-			fscanf(f, ";");
+      fscanf(f, ";");
       switch (result) {
+        // Result returned without issues, print OK response
       case 0: {
-        printf("!ok;");
+        fprintf(f, "!ok;");
       } break;
+        // Something happened, print generic error
       case -1: {
-        printf("!err;");
-      }
+        fprintf(f, "!err;");
+      } break;
+      // We already returned an OK response with something in it, so just break
+      case 1: break;
+      // We already returned an Err response with something in it, so just break
+      case -2: break;
       }
       return result;
     }
