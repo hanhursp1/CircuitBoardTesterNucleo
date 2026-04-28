@@ -54,17 +54,18 @@ void ProbeSet_init(ProbeSet *probes) {
 ProbePosition Probe_calculate_position(Probe *probe, uint32_t x, uint32_t y) {
   ProbePosition result;
   // TODO: Test if this works
+	// Calculate the absolute X position
+	const float rail_offset = (probe->side == Right) ? RAIL_OFFSET_R : RAIL_OFFSET_L;
+	float probe_x_abs = (probe->side == Right) ? x + rail_offset : PROBE_LEN - x;
+	// Normalize it in terms of PROBE_LEN distance
+	float probe_x_nomalized = probe_x_abs / (float)PROBE_LEN;
+	// Calculate the angle
+	float theta = asinf(probe_x_nomalized);
+	result.rotation = theta;
 
-	switch(probe->side) {
-		case Left: {
+	int32_t probe_y = BED_OFFSET_Y - (PROBE_LEN * cosf(theta));
+	result.position = probe_y;
 
-		} break;
-		case Right: {
-
-		} break;
-	}
-
-  // Return position
   return result;
 }
 

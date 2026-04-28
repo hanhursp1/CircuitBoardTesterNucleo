@@ -112,7 +112,8 @@ DEF_INSTR(stepper) {
   int pos;
   volatile int found = fscanf(f, "%d:%d", &stepid, &pos);
   volatile Stepper *stepper = ProbeSet_get_stepper_by_id(&probes, stepid);
-	assert(stepper);
+  if (!stepper)
+    return -1;
   Stepper_move_to_immediate(stepper, pos);
   return 0;
 }
@@ -122,7 +123,8 @@ DEF_INSTR(stepperdirect) {
   volatile int found = fscanf(f, "%d:%d", &id, &steps);
   // assert(found == 2);
   Stepper *stepper = ProbeSet_get_stepper_by_id(&probes, id);
-	assert(stepper);
+  if (!stepper)
+    return -1;
   StepperDirection dir = STEPD_FORWARDS;
   if (steps < 0) {
     dir = STEPD_BACKWARDS;
@@ -141,7 +143,7 @@ DEF_INSTR(servo) {
   int deg;
   int found = fscanf(f, "%d:%d", &id, &deg);
   // assert(found == 2);
-  Servo *servo = (id) ? &probes.left.axis : &probes.right.axis;
+  Servo *servo = ProbeSet_get_servo_by_id(&probes, id);
   float rad = ((float)deg / 360.0) * 2 * PI;
   uint16_t step = _Servo_lerp(servo->range_min, servo->range_max, rad);
   printf("!dbg:%d:%.2f:%hd;\n", id, rad, step);
@@ -149,7 +151,7 @@ DEF_INSTR(servo) {
   while (!Servo_rotate_delta(servo, 0.005)) {
     printf("!dbg:%d:%d;\n", (int)(1000 * servo->value),
            (int)(1000 * servo->target));
-		fflush(stdout);
+    fflush(stdout);
     HAL_Delay(10);
   };
   return 0;
@@ -160,8 +162,65 @@ DEF_INSTR(servodirect) {
   int val;
   int found = fscanf(f, "%d:%d", &id, &val);
   // assert(found == 2);
-  Servo *servo = (id) ? &probes.left.axis : &probes.right.axis;
+  Servo *servo = ProbeSet_get_servo_by_id(&probes, id);
   Servo_set_value_direct(servo, val);
+  return 0;
+}
+
+DEF_INSTR(servotest) {
+  int id;
+  int x, y;
+  fscanf(f, "%d:%d,%d", &id, &x, &y);
+  Probe *probe = (id) ? &probes.left : &probes.right;
+  if (!probe)
+    return -1;
+  volatile ProbePosition pos = Probe_calculate_position(probe, x, y);
+  Servo_set_value(&probe->axis, pos.rotation);
+  return 0;
+}
+
+DEF_INSTR(servotable) {
+  Probe *probe = &probes.right;
+	uint32_t x = 0;
+  while (probe != NULL) {
+
+    // uint32_t x = 0;
+    ProbePosition pos = Probe_calculate_position(probe, x, 0);
+    while (!isnanf(pos.rotation)) {
+      int rot_high = floorf(pos.rotation);
+      int rot_low = floorf(pos.rotation * 1000.0) - rot_high;
+      printf("!dbg:{side=%s,rot=%d.%d,pos=%d,%d};\n",
+             (probe->side == Right) ? "Right" : "Left", rot_high, rot_low,
+             x /* + ((probe->side == Right) ? RAIL_OFFSET_R : RAIL_OFFSET_L)*/,
+             pos.position);
+      x += (probe->side == Right) ? 1000 : -1000;
+      pos = Probe_calculate_position(probe, x, 0);
+    }
+    if (probe == &probes.right)
+      probe = &probes.left;
+    else
+      probe = NULL;
+  }
+  return 0;
+}
+
+DEF_INSTR(ping) {
+  HAL_Delay(10);
+  printf("!pong;\n");
+  fflush(stdout);
+  return 1;
+}
+
+DEF_INSTR(fakeresp) {
+	HAL_Delay(10);
+  printf("!ok;\n");
+  HAL_Delay(100);
+  for (int i = 0; i < 100; i++) {
+    printf("!res:%d:%s;\n", i, (i % 2) ? "pass" : "fail");
+    fflush(stdout);
+    HAL_Delay(50 * i);
+  }
+  printf("!eof;\n");
   return 0;
 }
 
@@ -173,11 +232,12 @@ DEF_INSTR(led) {
 }
 
 const Instruction *const instructions[] = {
-    &INSTR(vertcnt),       &INSTR(netcnt),   &INSTR(vert),
-    &INSTR(net),           &INSTR(echo),     &INSTR(stepper),
-    &INSTR(stepperdirect), &INSTR(servo),    &INSTR(servodirect),
-    &INSTR(led),           &INSTR(movprobe), &INSTR(servrot),
-    &INSTR(probepos)};
+    &INSTR(vertcnt),       &INSTR(netcnt),    &INSTR(vert),
+    &INSTR(net),           &INSTR(echo),      &INSTR(stepper),
+    &INSTR(stepperdirect), &INSTR(servo),     &INSTR(servodirect),
+    &INSTR(led),           &INSTR(movprobe),  &INSTR(servrot),
+    &INSTR(probepos),      &INSTR(servotest), &INSTR(ping),
+    &INSTR(fakeresp),      &INSTR(servotable)};
 
 #define INSTR_COUNT (sizeof(instructions) / sizeof(Instruction *))
 
@@ -193,7 +253,7 @@ int execute_instruction(FILE *f) {
   // Read instruction from file stream
   fscanf(f, "%[^\n\r:;]:", instr);
   // DEBUG: echo instruction over the UART
-  DBG(instr);
+  // DBG(instr);
 
   for (int i = 0; i < INSTR_COUNT; i++) {
     // Assume an instruction is valid if it and its callback are not null
@@ -205,16 +265,18 @@ int execute_instruction(FILE *f) {
       switch (result) {
         // Result returned without issues, print OK response
       case 0: {
-        fprintf(f, "!ok;");
+        fprintf(f, "!ok;\n");
       } break;
         // Something happened, print generic error
       case -1: {
-        fprintf(f, "!err;");
+        fprintf(f, "!err;\n");
       } break;
       // We already returned an OK response with something in it, so just break
-      case 1: break;
+      case 1:
+        break;
       // We already returned an Err response with something in it, so just break
-      case -2: break;
+      case -2:
+        break;
       }
       return result;
     }

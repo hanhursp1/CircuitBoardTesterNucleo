@@ -27,7 +27,7 @@
 void LED_Init();
 
 bool ESTOP_Callback() {
-	USART_write_string(USB_USART, "!err:ESTOP;");
+	USART_write_string(USB_USART, "!err:ESTOP;\n");
 	return false;
 }
 
@@ -104,15 +104,15 @@ int main(void) {
   // test_stepper.io = (StepperIO){
   // 	.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
   // };
-	Stepper_init_simplified(&probes.right.rail);
-  Stepper_init_simplified(&probes.left.rail);
-	board.i2c = I2C1_Init();
+	// Stepper_init_simplified(&probes.right.rail);
+  // Stepper_init_simplified(&probes.left.rail);
+	// board.i2c = I2C1_Init();
 
-	PCA9685_Init(&board);
+	// PCA9685_Init(&board);
 	
 	// TODO: Finalize main loop implementation
 
-	printf("Hello world!\n");
+	printf("!dbg:Ready;\n");
 
 
   while (true) {

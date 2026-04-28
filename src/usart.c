@@ -221,9 +221,9 @@ ssize_t USART_Cookie_read(void *cookie, char *buf, size_t size) {
   {
     // DBG("Reading buffer...");
     ssize_t x = USART_read_string((USART)cookie, buf, size);
-    char dbg_str[1024];
-    sprintf(dbg_str, "!dbg:%s;", buf);
-    USART_write_string(USB_USART, dbg_str);
+    // char dbg_str[1024];
+    // sprintf(dbg_str, "!dbg:%s;", buf);
+    // USART_write_string(USB_USART, dbg_str);
     // printf("!dbg:%s (Len: %d);", buf, x);
     return x;
   }

@@ -41,7 +41,7 @@ void PCA9685_Init(PCA9685 *board) {
 // the target (between `SERVO_MIN` and `SERVO_MAX`)
 uint16_t _Servo_lerp(uint16_t a, uint16_t b, float t) {
   t = (t - SERVO_MIN) / (SERVO_MAX - SERVO_MIN);
-	t = 1.0 - t;	// Invert t because we're mapping in an inverse range
+	// Invert t because we're mapping in an inverse range
   return a + (uint16_t)(t * (float)(b - a));
 }
 
@@ -90,6 +90,19 @@ bool Servo_rotate_delta(Servo *servo, float delta) {
   }
   Servo_update(servo);
   return Servo_at_destination(servo);
+}
+
+void Servo_rotate_immediate(Servo *servo, float value) {
+	servo->target = servo->value = value;
+	Servo_update(servo);
+}
+
+void Servo_rotate_smooth(Servo *servo, float delta_time, uint32_t cooldown) {
+	while (!Servo_at_destination(servo)) {
+		Servo_rotate_delta(servo, delta_time);
+		HAL_Delay(cooldown);
+	}
+	// PCA9685_sleep(servo->board);
 }
 
 void Servo_set_target(Servo *servo, float target) { servo->target = target; }

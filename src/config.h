@@ -26,8 +26,10 @@
 
 // Rail offset to the edge of the probe area
 // TODO: Actually measure these
-#define RAIL_OFFSET_L 100000
-#define RAIL_OFFSET_R 100000
-#define PROBE_LEN 1500000
-#define BED_HIGH_UM 100000
-#define BED_OFFSET_Y 0
+#define RAIL_OFFSET_L 80000
+#define RAIL_OFFSET_R 80000
+// #define RAIL_OFFSET 10000
+#define PROBE_LEN 181250
+#define BED_HIGH_UM 10000
+#define BED_OFFSET_Y 150000
+#define BED_WIDTH (PROBE_LEN - RAIL_OFFSET)

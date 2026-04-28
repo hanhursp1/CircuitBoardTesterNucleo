@@ -20,6 +20,7 @@ typedef struct PCA9685 {
 	I2C i2c;
 	uint8_t addr;
 	uint8_t prescaler;
+	uint8_t mode1;
 } PCA9685;
 
 typedef struct Servo {
