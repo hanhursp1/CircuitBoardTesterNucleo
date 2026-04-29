@@ -44,8 +44,8 @@ typedef enum StepperDirection {
 } StepperDirection;
 
 
-#define STEPD_FORWARDS STEPD_COUNTERCLOCKWISE
-#define STEPD_BACKWARDS STEPD_CLOCKWISE
+#define STEPD_FORWARDS STEPD_CLOCKWISE
+#define STEPD_BACKWARDS STEPD_COUNTERCLOCKWISE
 
 typedef struct Stepper {
 	// I/O for the stepper

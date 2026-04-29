@@ -27,23 +27,27 @@ bool valid_stepper_simplified_io(StepperIO *io) {
 
 #pragma region Stepper
 
+bool Stepper_valid(Stepper *self) {
+  return !((self->position < 0 && self->dir == STEPD_BACKWARDS) ||
+           (self->position > RAIL_LEN && self->dir == STEPD_FORWARDS));
+}
+
 void Stepper_step_immediate(Stepper *self) {
   // Check to make sure we're not going too far backwards or forwards
-  if (!(self->position < 0 && self->dir == STEPD_BACKWARDS) &&
-      !(self->position > RAIL_LEN && self->dir == STEPD_FORWARDS)) {
-    HAL_GPIO_TogglePin(self->io.gpio, self->io.step);
+  if (!Stepper_valid(self))
+    return;
 
-    // TODO?: Make this delay shorter somehow. Maybe add a custom timer?
-    HAL_Delay(1);
+  HAL_GPIO_TogglePin(self->io.gpio, self->io.step);
 
-    HAL_GPIO_TogglePin(self->io.gpio, self->io.step);
+  // TODO?: Make this delay shorter somehow. Maybe add a custom timer?
+  HAL_Delay(1);
 
-    HAL_Delay(1);
+  HAL_GPIO_TogglePin(self->io.gpio, self->io.step);
 
-    // Update the stepper's position
-    self->position +=
-        (self->dir == STEPD_FORWARDS) ? um_per_step : -um_per_step;
-  }
+  HAL_Delay(1);
+
+  // Update the stepper's position
+  self->position += (self->dir == STEPD_FORWARDS) ? um_per_step : -um_per_step;
 }
 
 void Stepper_set_mode(Stepper *self, StepperMode mode) {
@@ -112,7 +116,7 @@ void Stepper_move_to(Stepper *self, uint32_t position) {
 }
 
 void Stepper_move_to_immediate(Stepper *self, uint32_t position) {
-  bool is_lesser = self->position < position;
+  bool is_lesser = position < self->position;
   // Move down if it is, move up if it's not
   StepperDirection dir = (is_lesser) ? STEPD_BACKWARDS : STEPD_FORWARDS;
   Stepper_set_direction(self, dir);
@@ -122,6 +126,7 @@ void Stepper_move_to_immediate(Stepper *self, uint32_t position) {
   uint32_t num_steps = diff / um_per_step;
 
   for (int i = 0; i < num_steps; i++) {
+		if (!Stepper_valid(self)) break;
     Stepper_step_immediate(self);
   }
 

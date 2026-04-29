@@ -44,13 +44,13 @@ void ProbeSet_init(ProbeSet *probes) {
     GPIO_InitTypeDef init_left = {.Pin = probes->left.io.homing_pin |
                                          probes->left.io.probe_pin,
                                   .Mode = GPIO_MODE_INPUT,
-                                  .Pull = GPIO_PULLUP};
+                                  .Pull = GPIO_PULLDOWN};
     HAL_GPIO_Init(probes->left.io.gpio, &init_left);
 
     GPIO_InitTypeDef init_right = {.Pin = probes->right.io.homing_pin |
                                           probes->right.io.probe_pin,
                                    .Mode = GPIO_MODE_INPUT,
-                                   .Pull = GPIO_PULLUP};
+                                   .Pull = GPIO_PULLDOWN};
     HAL_GPIO_Init(probes->right.io.gpio, &init_right);
   }
 }
@@ -66,11 +66,11 @@ ProbePosition Probe_calculate_position(Probe *probe, uint32_t x, uint32_t y) {
   float probe_x_nomalized = probe_x_abs / (float)PROBE_LEN;
   // Calculate the angle
   float theta = asinf(probe_x_nomalized);
-  theta = (probe->side == Right) ? SERVO_MAX - theta : theta;
-  result.rotation = theta;
+  float final_theta = (probe->side == Right) ? SERVO_MAX - theta : theta;
+  result.rotation = final_theta;
 
-  int32_t probe_y = BED_OFFSET_Y - (PROBE_LEN * cosf(theta));
-  result.position = probe_y;
+  volatile int32_t probe_y = (PROBE_LEN * cosf(theta));
+  result.position = (y + BED_OFFSET_Y) - probe_y;
 
   return result;
 }
@@ -85,7 +85,9 @@ void Probe_to_position_pair(Probe *probe, ProbePosition position) {
   // Set the servo's target position
   Servo_set_target(axis, position.rotation);
   // Update the servo rotation at 20ms tick intervals
-  Servo_update(axis);
+	while(!Servo_rotate_delta(&probe->axis, 0.1)) {
+		HAL_Delay(10);
+	}
 }
 
 void Probe_set_position(Probe *probe, uint32_t x, uint32_t y) {
@@ -134,13 +136,17 @@ Servo *ProbeSet_get_servo_by_id(ProbeSet *probes, int id) {
   }
 }
 
-inline bool Probe_at_home(Probe *probe) {
+bool Probe_at_home(Probe *probe) {
   // TODO: Test if the homing pin is active high or active low
   return HAL_GPIO_ReadPin(probe->io.gpio, probe->io.homing_pin) == 1;
 }
 
 // Home a single probe
 void Probe_home(Probe *probe) {
+	Servo_set_value(&probe->axis, (probe->side == Right) ? SERVO_MAX : SERVO_MIN);
+	HAL_Delay(500);
+
+
   // Temporarily raise the probe position to bypass limits
   probe->rail.position = RAIL_LEN - 1;
   // Set the direction backwards

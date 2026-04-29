@@ -62,7 +62,7 @@ ProbePosition Probe_calculate_position(Probe *probe, uint32_t x, uint32_t y);
 // void Probe_to_location(Probe* probe, ProbePosition position);
 void Probe_set_position(Probe *probe, uint32_t x, uint32_t y);
 
-inline bool Probe_at_home(Probe *probe);
+bool Probe_at_home(Probe *probe);
 
 void Probe_home(Probe *probe);
 void ProbeSet_home(ProbeSet *probes);

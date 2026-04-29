@@ -148,7 +148,6 @@ DEF_INSTR(movprobe) {
   int x, y;
   fscanf(f, "%d:%d,%d", &probeid, &x, &y);
   Probe *probe = (probeid) ? &probes.left : &probes.right;
-  // Side side = (probeid) ? Right : Left;
   Probe_set_position(probe, x, y);
   return 0;
 }
@@ -182,7 +181,9 @@ DEF_INSTR(stepper) {
   if (!stepper)
     return -1;
   Stepper_move_to_immediate(stepper, pos);
-  return 0;
+  printf("!ok:%d;\n", stepper->position);
+  // return 0;
+  return 1;
 }
 
 DEF_INSTR(stepperdirect) {
@@ -249,17 +250,16 @@ DEF_INSTR(servodirect) {
 DEF_INSTR(servotest) {
   int x;
   fscanf(f, "%d", &x);
-	{
-  	volatile ProbePosition pos = Probe_calculate_position(&probes.left, x, 0);
-  	Servo_set_value(&probes.left.axis, pos.rotation);
-	}
-	{
-		volatile ProbePosition pos = Probe_calculate_position(&probes.right, x, 0);
-  	Servo_set_value(&probes.right.axis, pos.rotation);
-	}
+  {
+    volatile ProbePosition pos = Probe_calculate_position(&probes.left, x, 0);
+    Servo_set_value(&probes.left.axis, pos.rotation);
+  }
+  {
+    volatile ProbePosition pos = Probe_calculate_position(&probes.right, x, 0);
+    Servo_set_value(&probes.right.axis, pos.rotation);
+  }
   return 0;
 }
-
 
 DEF_INSTR(servotable) {
   Probe *probe = &probes.right;
@@ -314,6 +314,13 @@ DEF_INSTR(led) {
   return 0;
 }
 
+DEF_INSTR(home) {
+  // ProbeSet_home(&probes);
+	Probe_home(&probes.right);
+	Probe_home(&probes.left);
+  return 0;
+}
+
 const Instruction *const instructions[] = {
     &INSTR(vertcnt),       &INSTR(netcnt),     &INSTR(vert),
     &INSTR(net),           &INSTR(echo),       &INSTR(stepper),
@@ -321,7 +328,7 @@ const Instruction *const instructions[] = {
     &INSTR(led),           &INSTR(movprobe),   &INSTR(servrot),
     &INSTR(probepos),      &INSTR(servotest),  &INSTR(ping),
     &INSTR(fakeresp),      &INSTR(servotable), &INSTR(verts),
-    &INSTR(nets)};
+    &INSTR(nets),          &INSTR(home)};
 
 #define INSTR_COUNT (sizeof(instructions) / sizeof(Instruction *))
 

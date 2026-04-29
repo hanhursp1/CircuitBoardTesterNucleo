@@ -51,7 +51,7 @@ ProbeSet probes = {
          .side = Left,
          .io = {.gpio = GPIOC,
                 .probe_pin = GPIO_PIN_5,
-                .homing_pin = GPIO_PIN_6}},
+                .homing_pin = GPIO_PIN_8}},
     .right =
         {.rail = {.io = {.gpio = GPIOB, .step = GPIO_PIN_0, .dir = GPIO_PIN_1}},
          .axis = {.board = &board,
@@ -59,7 +59,7 @@ ProbeSet probes = {
                   .range_max = 430,
                   .range_min = 185},
          .side = Right,
-         .io = {.gpio = GPIOC, .probe_pin = 0, .homing_pin = GPIO_PIN_8}},
+         .io = {.gpio = GPIOC, .probe_pin = 0, .homing_pin = GPIO_PIN_6}},
     .bed = {// TODO: Other GPIO
             .stepper = {.io = {.gpio = GPIOB,
                                .step = GPIO_PIN_4,
@@ -89,6 +89,19 @@ int main(void) {
 
   // Initialize probe set
   ProbeSet_init(&probes);
+
+	// while (true) {
+	// 	if (HAL_GPIO_ReadPin(probes.left.io.gpio, probes.left.io.homing_pin)) {
+	// 		printf("Left home hit!\n");
+	// 	}
+	// 	if (HAL_GPIO_ReadPin(probes.right.io.gpio, probes.right.io.homing_pin)) {
+	// 		printf("Right home hit!\n");
+	// 	}
+
+	// 	fflush(stdout);
+
+	// 	HAL_Delay(10);
+	// }
 
   // TODO: Finalize main loop implementation
 
