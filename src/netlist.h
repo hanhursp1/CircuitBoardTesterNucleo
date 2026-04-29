@@ -15,11 +15,6 @@ typedef struct NetlistPoint {
 	int32_t y;
 } NetlistPoint;
 
-typedef struct NetlistEntryInfo {
-	uint16_t  length;
-	NetlistPoint* start_point;
-} NetlistEntryInfo;
-
 extern NetlistPoint points_buffer[MAX_POINTS];
 extern NetlistEntry nets_buffer[MAX_INDICES];
 
@@ -38,5 +33,6 @@ void clear_netlist();
 void set_vert(int id, int32_t x, int32_t y);
 void set_net(int id, uint16_t start, uint16_t len);
 
+void NetlistEntry_probe(NetlistEntry entry);
 // Slices a `NetlistEntryInfo` object, returning a subsection of it
-NetlistEntryInfo NetlistEntryInfo_slice(NetlistEntryInfo self, int from, int to);
+// NetlistEntryInfo NetlistEntryInfo_slice(NetlistEntryInfo self, int from, int to);

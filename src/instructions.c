@@ -234,17 +234,32 @@ DEF_INSTR(servodirect) {
   return 0;
 }
 
+// DEF_INSTR(servotest) {
+//   int id;
+//   int x, y;
+//   fscanf(f, "%d:%d,%d", &id, &x, &y);
+//   Probe *probe = (id) ? &probes.left : &probes.right;
+//   if (!probe)
+//     return -1;
+//   volatile ProbePosition pos = Probe_calculate_position(&probes.left, x, y);
+//   Servo_set_value(&probe->axis, pos.rotation);
+//   return 0;
+// }
+
 DEF_INSTR(servotest) {
-  int id;
-  int x, y;
-  fscanf(f, "%d:%d,%d", &id, &x, &y);
-  Probe *probe = (id) ? &probes.left : &probes.right;
-  if (!probe)
-    return -1;
-  volatile ProbePosition pos = Probe_calculate_position(probe, x, y);
-  Servo_set_value(&probe->axis, pos.rotation);
+  int x;
+  fscanf(f, "%d", &x);
+	{
+  	volatile ProbePosition pos = Probe_calculate_position(&probes.left, x, 0);
+  	Servo_set_value(&probes.left.axis, pos.rotation);
+	}
+	{
+		volatile ProbePosition pos = Probe_calculate_position(&probes.right, x, 0);
+  	Servo_set_value(&probes.right.axis, pos.rotation);
+	}
   return 0;
 }
+
 
 DEF_INSTR(servotable) {
   Probe *probe = &probes.right;

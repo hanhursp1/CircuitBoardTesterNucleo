@@ -6,18 +6,22 @@
 #include "stepper.h"
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_gpio.h"
+#include "stm32f4xx_hal_rcc.h"
 #include <math.h>
 
 void ProbeSet_init(ProbeSet *probes) {
   // Initialize bed
   {
-    // Init homing pin
-    GPIO_InitTypeDef bed_init = {
-        .Pin = probes->bed.homing,
-        .Mode = GPIO_MODE_INPUT,
-        .Pull = GPIO_PULLUP,
-    };
-    HAL_GPIO_Init(probes->bed.gpio, &bed_init);
+
+    if (probes->bed.gpio) {
+      // Init homing pin
+      GPIO_InitTypeDef bed_init = {
+          .Pin = probes->bed.homing,
+          .Mode = GPIO_MODE_INPUT,
+          .Pull = GPIO_PULLUP,
+      };
+      HAL_GPIO_Init(probes->bed.gpio, &bed_init);
+    }
 
     // Init stepper
     Stepper_init_simplified(&probes->bed.stepper);
@@ -54,17 +58,19 @@ void ProbeSet_init(ProbeSet *probes) {
 ProbePosition Probe_calculate_position(Probe *probe, uint32_t x, uint32_t y) {
   ProbePosition result;
   // TODO: Test if this works
-	// Calculate the absolute X position
-	const float rail_offset = (probe->side == Right) ? RAIL_OFFSET_R : RAIL_OFFSET_L;
-	float probe_x_abs = (probe->side == Right) ? x + rail_offset : PROBE_LEN - x;
-	// Normalize it in terms of PROBE_LEN distance
-	float probe_x_nomalized = probe_x_abs / (float)PROBE_LEN;
-	// Calculate the angle
-	float theta = asinf(probe_x_nomalized);
-	result.rotation = theta;
+  // Calculate the absolute X position
+  const float rail_offset =
+      (probe->side == Right) ? RAIL_OFFSET_R : RAIL_OFFSET_L;
+  float probe_x_abs = (probe->side == Right) ? x + rail_offset : PROBE_LEN - x;
+  // Normalize it in terms of PROBE_LEN distance
+  float probe_x_nomalized = probe_x_abs / (float)PROBE_LEN;
+  // Calculate the angle
+  float theta = asinf(probe_x_nomalized);
+  theta = (probe->side == Right) ? SERVO_MAX - theta : theta;
+  result.rotation = theta;
 
-	int32_t probe_y = BED_OFFSET_Y - (PROBE_LEN * cosf(theta));
-	result.position = probe_y;
+  int32_t probe_y = BED_OFFSET_Y - (PROBE_LEN * cosf(theta));
+  result.position = probe_y;
 
   return result;
 }
@@ -79,10 +85,7 @@ void Probe_to_position_pair(Probe *probe, ProbePosition position) {
   // Set the servo's target position
   Servo_set_target(axis, position.rotation);
   // Update the servo rotation at 20ms tick intervals
-  while (!Servo_at_destination(axis)) {
-    Servo_rotate_delta(axis, 0.02);
-    HAL_Delay(20);
-  }
+  Servo_update(axis);
 }
 
 void Probe_set_position(Probe *probe, uint32_t x, uint32_t y) {
@@ -132,51 +135,52 @@ Servo *ProbeSet_get_servo_by_id(ProbeSet *probes, int id) {
 }
 
 inline bool Probe_at_home(Probe *probe) {
-	// TODO: Test if the homing pin is active high or active low
-	return HAL_GPIO_ReadPin(probe->io.gpio, probe->io.homing_pin) == 1;
+  // TODO: Test if the homing pin is active high or active low
+  return HAL_GPIO_ReadPin(probe->io.gpio, probe->io.homing_pin) == 1;
 }
 
 // Home a single probe
 void Probe_home(Probe *probe) {
-	// Temporarily raise the probe position to bypass limits
-	probe->rail.position = RAIL_LEN - 1;
-	// Set the direction backwards
-	Stepper_set_direction(&probe->rail, STEPD_BACKWARDS);
-	// Step the probe backwards while it isn't homed
-	while (!Probe_at_home(probe)) {
-		Stepper_step_immediate(&probe->rail);
-	}
-	probe->rail.position = 0;
+  // Temporarily raise the probe position to bypass limits
+  probe->rail.position = RAIL_LEN - 1;
+  // Set the direction backwards
+  Stepper_set_direction(&probe->rail, STEPD_BACKWARDS);
+  // Step the probe backwards while it isn't homed
+  while (!Probe_at_home(probe)) {
+    Stepper_step_immediate(&probe->rail);
+  }
+  probe->rail.position = 0;
 }
 
 // Optimized homing operation that sets both probes to home at once
 void ProbeSet_home(ProbeSet *probes) {
-	// Set both servos to 0
-	Servo_set_value(&probes->left.axis, 0.0);
-	Servo_set_value(&probes->right.axis, 0.0);
+  // Set both servos to 0
+  Servo_set_value(&probes->left.axis, SERVO_MIN);
+  Servo_set_value(&probes->right.axis, SERVO_MAX);
+	HAL_Delay(500);
 
-	// Set both stepper directions
-	Stepper_set_direction(&probes->left.rail, STEPD_BACKWARDS);
-	Stepper_set_direction(&probes->right.rail, STEPD_BACKWARDS);
+  // Set both stepper directions
+  Stepper_set_direction(&probes->left.rail, STEPD_BACKWARDS);
+  Stepper_set_direction(&probes->right.rail, STEPD_BACKWARDS);
 
-	while (true) {
-		// If both probes are homed, break this loop
-		if (Probe_at_home(&probes->left) && Probe_at_home(&probes->right)) {
-			break;
-		}
-		// If the left probe isn't homed, move it backwards
-		if (!Probe_at_home(&probes->left)) {
-			HAL_GPIO_TogglePin(probes->left.io.gpio, probes->left.io.homing_pin);
-		}
-		// If the right probe isn't homed, move it backwards
-		if (!Probe_at_home(&probes->right)) {
-			HAL_GPIO_TogglePin(probes->left.io.gpio, probes->left.io.homing_pin);
-		}
-		// Delay for 1 ms
-		HAL_Delay(1);
-	}
+  while (true) {
+    // If both probes are homed, break this loop
+    if (Probe_at_home(&probes->left) && Probe_at_home(&probes->right)) {
+      break;
+    }
+    // If the left probe isn't homed, move it backwards
+    if (!Probe_at_home(&probes->left)) {
+      HAL_GPIO_TogglePin(probes->left.io.gpio, probes->left.io.homing_pin);
+    }
+    // If the right probe isn't homed, move it backwards
+    if (!Probe_at_home(&probes->right)) {
+      HAL_GPIO_TogglePin(probes->left.io.gpio, probes->left.io.homing_pin);
+    }
+    // Delay for 1 ms
+    HAL_Delay(1);
+  }
 
-	// Reset probe position values
-	probes->left.rail.position = 0;
-	probes->right.rail.position = 0;
+  // Reset probe position values
+  probes->left.rail.position = 0;
+  probes->right.rail.position = 0;
 }

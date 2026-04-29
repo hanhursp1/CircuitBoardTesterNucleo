@@ -26,74 +26,57 @@
 
 void LED_Init();
 
+// The Servo motor board
+PCA9685 board = {.addr = 0x40, .prescaler = 121};
+
+// This also triggers when something goes wrong with a stepper or servo.
+// We don't know why, but it just does.
 bool ESTOP_Callback() {
-	USART_write_string(USB_USART, "!err:ESTOP;\n");
-	return false;
+  USART_write_string(USB_USART, "!err:ESTOP;\n");
+  PCA9685_sleep(&board);
+  return false;
 }
 
-// The Servo motor board
-PCA9685 board = {
-	.addr = 0x40,
-	.prescaler = 121
-};
-
 // The probes and their associated I/O
-// TODO: completely intialize with full GPIO layout
 ProbeSet probes = {
-	.left = {
-		// TODO: Other GPIO
-		.rail = {
-			.io = {
-				.gpio = GPIOB, .step = GPIO_PIN_2, .dir = GPIO_PIN_3
-			},
-		},
-		.axis = {
-			.board = &board, .channel = 0, .range_max = 430, .range_min = 185
-		},
-		.side = Left,
-		.io = {
-			.gpio = GPIOC,
-			.probe_pin = GPIO_PIN_5,
-			.homing_pin = GPIO_PIN_6
-		}
-	},
-	.right = {
-		// TODO: Other GPIO
-		.rail = {
-			.io = {
-				.gpio = GPIOB, .step = GPIO_PIN_0, .dir = GPIO_PIN_1
-			}
-		},
-		.axis = {
-			.board = &board, .channel = 1, .range_max = 430, .range_min = 185
-		},
-		.side = Right,
-		.io = {
-			.gpio = GPIOC,
-			.probe_pin = 0,
-			.homing_pin = GPIO_PIN_8
-		}
-	},
-	.bed = {
-		// TODO: Other GPIO
-		.stepper = {
-			.io = {
-				.gpio = GPIOB, .step = GPIO_PIN_4, .dir = GPIO_PIN_5
-			}
-		}
-		
-	}
-};
+    .left =
+        {.rail =
+             {
+                 .io = {.gpio = GPIOB, .step = GPIO_PIN_2, .dir = GPIO_PIN_3},
+             },
+         .axis = {.board = &board,
+                  .channel = 0,
+                  .range_max = 430,
+                  .range_min = 185},
+         .side = Left,
+         .io = {.gpio = GPIOC,
+                .probe_pin = GPIO_PIN_5,
+                .homing_pin = GPIO_PIN_6}},
+    .right =
+        {.rail = {.io = {.gpio = GPIOB, .step = GPIO_PIN_0, .dir = GPIO_PIN_1}},
+         .axis = {.board = &board,
+                  .channel = 1,
+                  .range_max = 430,
+                  .range_min = 185},
+         .side = Right,
+         .io = {.gpio = GPIOC, .probe_pin = 0, .homing_pin = GPIO_PIN_8}},
+    .bed = {// TODO: Other GPIO
+            .stepper = {.io = {.gpio = GPIOB,
+                               .step = GPIO_PIN_4,
+                               .dir = GPIO_PIN_5}}
+
+    }};
 
 int main(void) {
   // Init Hardware Abstraction Layer
   HAL_Init();
-  // Enable GPIOB
+  // Enable GPIOB and GPIOC
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   // Init LED for lights and stuff :)
   LED_Init();
-	// board.i2c = I2C1_Init();
-	ESTOP_init();
+  // Init estop pin
+  ESTOP_init();
 
   // Do a delay before working any further (fixes something, I forget what.)
   HAL_Delay(1000);
@@ -101,24 +84,20 @@ int main(void) {
   // Initialize USB serial, which also initializes the stdout and stdin
   USB_init();
 
-  // test_stepper.io = (StepperIO){
-  // 	.gpio = GPIOB, .step = GPIO_PIN_13, .dir = GPIO_PIN_14
-  // };
-	// Stepper_init_simplified(&probes.right.rail);
-  // Stepper_init_simplified(&probes.left.rail);
-	// board.i2c = I2C1_Init();
+  // Initialize I2C1
+  board.i2c = I2C1_Init();
 
-	// PCA9685_Init(&board);
-	
-	// TODO: Finalize main loop implementation
+  // Initialize probe set
+  ProbeSet_init(&probes);
 
-	printf("!dbg:Ready;\n");
+  // TODO: Finalize main loop implementation
 
+  printf("!dbg:Ready;\n");
 
   while (true) {
     fflush(stdin);
     USART_flush(USB_USART);
-		execute_instruction(stdin);
+    execute_instruction(stdin);
     // scheduling_test();
   }
   HAL_GPIO_WritePin(LED_GPIO_PORT, LED_PIN, GPIO_PIN_SET);
