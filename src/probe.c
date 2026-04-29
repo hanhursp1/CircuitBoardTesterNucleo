@@ -119,6 +119,7 @@ Stepper *ProbeSet_get_stepper_by_id(ProbeSet *probes, int id) {
     return NULL;
   }
 }
+
 Servo *ProbeSet_get_servo_by_id(ProbeSet *probes, int id) {
   switch (id) {
   case 0:
@@ -128,4 +129,54 @@ Servo *ProbeSet_get_servo_by_id(ProbeSet *probes, int id) {
   default:
     return NULL;
   }
+}
+
+inline bool Probe_at_home(Probe *probe) {
+	// TODO: Test if the homing pin is active high or active low
+	return HAL_GPIO_ReadPin(probe->io.gpio, probe->io.homing_pin) == 1;
+}
+
+// Home a single probe
+void Probe_home(Probe *probe) {
+	// Temporarily raise the probe position to bypass limits
+	probe->rail.position = RAIL_LEN - 1;
+	// Set the direction backwards
+	Stepper_set_direction(&probe->rail, STEPD_BACKWARDS);
+	// Step the probe backwards while it isn't homed
+	while (!Probe_at_home(probe)) {
+		Stepper_step_immediate(&probe->rail);
+	}
+	probe->rail.position = 0;
+}
+
+// Optimized homing operation that sets both probes to home at once
+void ProbeSet_home(ProbeSet *probes) {
+	// Set both servos to 0
+	Servo_set_value(&probes->left.axis, 0.0);
+	Servo_set_value(&probes->right.axis, 0.0);
+
+	// Set both stepper directions
+	Stepper_set_direction(&probes->left.rail, STEPD_BACKWARDS);
+	Stepper_set_direction(&probes->right.rail, STEPD_BACKWARDS);
+
+	while (true) {
+		// If both probes are homed, break this loop
+		if (Probe_at_home(&probes->left) && Probe_at_home(&probes->right)) {
+			break;
+		}
+		// If the left probe isn't homed, move it backwards
+		if (!Probe_at_home(&probes->left)) {
+			HAL_GPIO_TogglePin(probes->left.io.gpio, probes->left.io.homing_pin);
+		}
+		// If the right probe isn't homed, move it backwards
+		if (!Probe_at_home(&probes->right)) {
+			HAL_GPIO_TogglePin(probes->left.io.gpio, probes->left.io.homing_pin);
+		}
+		// Delay for 1 ms
+		HAL_Delay(1);
+	}
+
+	// Reset probe position values
+	probes->left.rail.position = 0;
+	probes->right.rail.position = 0;
 }

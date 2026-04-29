@@ -10,10 +10,14 @@ NetlistPoint points_buffer[MAX_POINTS] = {0};
 int num_nets = 0;
 NetlistEntry nets_buffer[MAX_INDICES] = {0};
 
-NetlistEntryInfo get_net(int id) {
+NetlistEntry get_net(int id) {
 	NetlistEntry n = nets_buffer[id];
-	NetlistEntryInfo result = {.length= n.length, .start_point= &points_buffer[n.start_index]};
-	return result;
+	return n;
+}
+
+NetlistPoint get_point(int id) {
+	NetlistPoint p = points_buffer[id];
+	return p;
 }
 
 int get_net_count() {
@@ -24,48 +28,25 @@ int get_vert_count() {
 	return num_points;
 }
 
+void set_net_count(int cnt) {
+	num_nets = cnt;
+}
+
+void set_vert_count(int cnt) {
+	num_points = cnt;
+}
+
 void clear_netlist() {
 	num_nets = 0;
 	num_points = 0;
 }
 
-void fill_netlist_from_file(FILE* f) {
-	// Flush the file
-	// fflush(f);
-	// Get the number of nets from the parameter
-	fscanf(f, "(%04u):", &num_nets);
-	// TODO: Panic if num_nets is greater than MAX_INDICES
-	for (int i = 0; i < num_nets; i++) {
-		unsigned int start, len;
-		fscanf(f, "%04u,%04u;", &start, &len);
-		nets_buffer[i].length = len;
-		nets_buffer[i].start_index = start;
-	}
+void set_vert(int id, int32_t x, int32_t y) {
+	points_buffer[id] = (NetlistPoint){.x = x, .y = y};
 }
 
-void fill_pointlist_from_file(FILE *f) {
-	// Flush the file
-	// fflush(f);
-	// Get the number of points from the parameter
-	fscanf(f, "(%04u):", &num_points);
-	// TODO: Panic if num_points is greater than MAX_POINTS
-	for (int i = 0; i < num_points; i++) {
-		unsigned int x, y;
-		fscanf(f, "%08u,%08u;", &x, &y);
-		points_buffer[i].x = x;
-		points_buffer[i].y = y;
-	}
-}
-
-void fill_pointlist_from_bytes_usart(USART u) {
-	// int count;
-	USART_read_exact(u, (char*)&num_points, sizeof(int));
-	USART_read_exact(u, (char*)points_buffer, num_points * sizeof(NetlistPoint));
-}
-
-void fill_netlist_from_bytes_usart(USART u) {
-	USART_read_exact(u, (char*)&num_nets, sizeof(int));
-	USART_read_exact(u, (char*)nets_buffer, num_nets);
+void set_net(int id, uint16_t start, uint16_t len) {
+	nets_buffer[id] = (NetlistEntry){.start_index = start, .length = len};
 }
 
 NetlistEntryInfo NetlistEntryInfo_slice(NetlistEntryInfo self, int from, int to) {

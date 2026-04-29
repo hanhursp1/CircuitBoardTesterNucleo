@@ -1,6 +1,7 @@
 #include "instructions.h"
 #include "common.h"
 #include "config.h"
+#include "netlist.h"
 #include "probe.h"
 #include "servo.h"
 #include "stepper.h"
@@ -12,67 +13,133 @@
 #include <stdio.h>
 #include <string.h>
 
-void can_you_repeat_that(FILE *f) { fprintf(f, "!repeat:;"); }
+void can_you_repeat_that(FILE *f) {
+  HAL_Delay(10);
+  fprintf(f, "!repeat:;\n");
+}
 
 // TODO: Add commments to instructions that need them
 
 DEF_INSTR(vertcnt) {
   int cnt, hash;
-  int found = fscanf(f, "%d:%x", &cnt, &hash);
+  int found = fscanf(f, "%d", &cnt);
   if (found < 1) {
     can_you_repeat_that(f);
     return -1;
-  } else if (found == 2) {
-    // TODO: Check hash
   }
+  set_vert_count(cnt);
   // TODO: set vert count info
   return 0;
 }
 
 DEF_INSTR(netcnt) {
   int cnt, hash;
-  int found = fscanf(f, "%d:%x", &cnt, &hash);
+  int found = fscanf(f, "%d", &cnt);
   if (found < 1) {
     can_you_repeat_that(f);
     return -1;
-  } else if (found == 2) {
-    // TODO: Check hash
   }
+  set_net_count(cnt);
   // TODO set net count info
   return 0;
 }
 
 DEF_INSTR(vert) {
   int id, x, y, hash;
-  int found = fscanf(f, "%04d:%d,%d:%x", &id, &x, &y, &hash);
+  int found = fscanf(f, "%d:%d,%d", &id, &x, &y);
   if (found < 3) {
     /* TODO: Panic */
     can_you_repeat_that(f);
     return -1;
+  }
+  set_vert(id, x, y);
+  // TODO: Set vertex info
+  return 0;
+}
+
+DEF_INSTR(verts) {
+  int start, len;
+  int found = fscanf(f, "%d,%d", &start, &len);
+  if (found < 2) {
+    /* TODO: Panic */
+    can_you_repeat_that(f);
+    return -2;
+  }
+  for (int i = start; i < start + len; i++) {
+    int x, y;
+    found = fscanf(f, ":%d,%d", &x, &y);
+    if (found < 2) {
+      can_you_repeat_that(f);
+      return -2;
+    }
+    set_vert(i, x, y);
   }
   // TODO: Set vertex info
   return 0;
 }
 
 DEF_INSTR(net) {
-  int id, x, y, hash;
-  int found = fscanf(f, "%04d:%d,%d:%x", &id, &x, &y, &hash);
+  int id, start, len, hash;
+  int found = fscanf(f, "%04d:%d,%d", &id, &start, &len);
   if (found < 3) {
     /* TODO: Panic */
     can_you_repeat_that(f);
     return -1;
   }
+  set_net(id, start, len);
   // TODO: Set net info
+  return 0;
+}
+
+DEF_INSTR(nets) {
+  int start, len;
+  int found = fscanf(f, "%d,%d", &start, &len);
+  if (found < 2) {
+    /* TODO: Panic */
+    can_you_repeat_that(f);
+    return -2;
+  }
+  for (int i = start; i < start + len; i++) {
+    int x, y;
+    found = fscanf(f, ":%d,%d", &x, &y);
+    if (found < 2) {
+      can_you_repeat_that(f);
+      return -2;
+    }
+    set_net(i, x, y);
+  }
+  // TODO: Set vertex info
   return 0;
 }
 
 DEF_INSTR(echo) {
   // TODO: Print out all vertex and index info to the client
+  for (int i = 0; i < get_net_count(); i++) {
+    NetlistEntry n = get_net(i);
+    printf("!dbg:net:%d:%X,%d;\n", i, n.start_index, n.length);
+    for (int j = 0; j < n.length; j++) {
+      NetlistPoint p = get_point(n.start_index + j);
+      printf("!dbg:point:%d:%06d,%06d;\n", j, p.x, p.y);
+    }
+  }
   return 0;
 }
 
 DEF_INSTR(run) {
   // TODO: Actually start a run
+  for (int i = 0; i < get_net_count(); i++) {
+    HAL_Delay(10);
+    NetlistEntry n = get_net(i);
+    printf("!dbg:Running Net %d;", i);
+    HAL_Delay(5000);
+    for (int j = n.start_index; j < n.start_index + n.length; j++) {
+      NetlistPoint p = get_point(j);
+      HAL_Delay(1000);
+      printf("!res:%d:%s;\n", j, "pass");
+    }
+  }
+  HAL_Delay(2000);
+  printf("!eof;");
   return 0;
 }
 
@@ -181,7 +248,7 @@ DEF_INSTR(servotest) {
 
 DEF_INSTR(servotable) {
   Probe *probe = &probes.right;
-	uint32_t x = 0;
+  uint32_t x = 0;
   while (probe != NULL) {
 
     // uint32_t x = 0;
@@ -212,15 +279,16 @@ DEF_INSTR(ping) {
 }
 
 DEF_INSTR(fakeresp) {
-	HAL_Delay(10);
+  HAL_Delay(10);
   printf("!ok;\n");
-  HAL_Delay(100);
+  HAL_Delay(1000);
   for (int i = 0; i < 100; i++) {
     printf("!res:%d:%s;\n", i, (i % 2) ? "pass" : "fail");
     fflush(stdout);
     HAL_Delay(50 * i);
   }
   printf("!eof;\n");
+  fflush(stdout);
   return 0;
 }
 
@@ -232,12 +300,13 @@ DEF_INSTR(led) {
 }
 
 const Instruction *const instructions[] = {
-    &INSTR(vertcnt),       &INSTR(netcnt),    &INSTR(vert),
-    &INSTR(net),           &INSTR(echo),      &INSTR(stepper),
-    &INSTR(stepperdirect), &INSTR(servo),     &INSTR(servodirect),
-    &INSTR(led),           &INSTR(movprobe),  &INSTR(servrot),
-    &INSTR(probepos),      &INSTR(servotest), &INSTR(ping),
-    &INSTR(fakeresp),      &INSTR(servotable)};
+    &INSTR(vertcnt),       &INSTR(netcnt),     &INSTR(vert),
+    &INSTR(net),           &INSTR(echo),       &INSTR(stepper),
+    &INSTR(stepperdirect), &INSTR(servo),      &INSTR(servodirect),
+    &INSTR(led),           &INSTR(movprobe),   &INSTR(servrot),
+    &INSTR(probepos),      &INSTR(servotest),  &INSTR(ping),
+    &INSTR(fakeresp),      &INSTR(servotable), &INSTR(verts),
+    &INSTR(nets)};
 
 #define INSTR_COUNT (sizeof(instructions) / sizeof(Instruction *))
 
@@ -262,14 +331,15 @@ int execute_instruction(FILE *f) {
         !strcmp(instructions[i]->id, instr)) {
       int result = instructions[i]->callback(f);
       fscanf(f, ";");
+      HAL_Delay(50);
       switch (result) {
         // Result returned without issues, print OK response
       case 0: {
-        fprintf(f, "!ok;\n");
+        USART_write_string(USB_USART, "!ok;\n");
       } break;
         // Something happened, print generic error
       case -1: {
-        fprintf(f, "!err;\n");
+        USART_write_string(USB_USART, "!err;\n");
       } break;
       // We already returned an OK response with something in it, so just break
       case 1:
@@ -278,6 +348,7 @@ int execute_instruction(FILE *f) {
       case -2:
         break;
       }
+      fflush(f);
       return result;
     }
   }
