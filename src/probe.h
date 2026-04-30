@@ -1,5 +1,6 @@
 #pragma once
 
+#include "netlist.h"
 #include "servo.h"
 #include "stepper.h"
 #include "stm32f446xx.h"
@@ -66,3 +67,5 @@ bool Probe_at_home(Probe *probe);
 
 void Probe_home(Probe *probe);
 void ProbeSet_home(ProbeSet *probes);
+
+bool ProbeSet_run_probe(ProbeSet* probes, NetlistPoint a, NetlistPoint b);

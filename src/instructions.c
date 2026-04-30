@@ -316,9 +316,25 @@ DEF_INSTR(led) {
 
 DEF_INSTR(home) {
   // ProbeSet_home(&probes);
-	Probe_home(&probes.right);
-	Probe_home(&probes.left);
+  Probe_home(&probes.right);
+  Probe_home(&probes.left);
   return 0;
+}
+
+DEF_INSTR(probe) {
+  int x1, y1;
+  int x2, y2;
+
+  fscanf(f, "%d,%d:%d,%d", &x1, &y1, &x2, &y2);
+
+  bool result = ProbeSet_run_probe(&probes, (NetlistPoint){.x = x1, .y = y1},
+                                   (NetlistPoint){.x = x2, .y = y2});
+  if (result)
+    printf("!res:0:pass;\n");
+  else
+    printf("!res:0:fail;\n");
+
+  return 1;
 }
 
 const Instruction *const instructions[] = {
@@ -328,7 +344,7 @@ const Instruction *const instructions[] = {
     &INSTR(led),           &INSTR(movprobe),   &INSTR(servrot),
     &INSTR(probepos),      &INSTR(servotest),  &INSTR(ping),
     &INSTR(fakeresp),      &INSTR(servotable), &INSTR(verts),
-    &INSTR(nets),          &INSTR(home)};
+    &INSTR(nets),          &INSTR(home),       &INSTR(probe)};
 
 #define INSTR_COUNT (sizeof(instructions) / sizeof(Instruction *))
 

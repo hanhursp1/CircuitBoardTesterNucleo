@@ -190,3 +190,19 @@ void ProbeSet_home(ProbeSet *probes) {
   probes->left.rail.position = 0;
   probes->right.rail.position = 0;
 }
+
+
+bool ProbeSet_run_probe(ProbeSet* probes, NetlistPoint a, NetlistPoint b) {
+	Bed_lower(&probes->bed);
+	HAL_Delay(10);
+
+	Probe_set_position(&probes->right, a.x, a.y);
+	Probe_set_position(&probes->left, b.x, b.y);
+
+	HAL_Delay(10);
+	Bed_raise(&probes->bed);
+	HAL_Delay(100);
+
+	bool result = ProbeSet_test_continuity(probes);
+	return result;
+}
