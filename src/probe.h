@@ -55,8 +55,6 @@ Servo *ProbeSet_get_servo_by_id(ProbeSet *probes, int id);
 void ProbeSet_lower_bed(ProbeSet *probes);
 void ProbeSet_raise_bed(ProbeSet *probes);
 
-void Bed_raise(Bed *bed);
-void Bed_lower(Bed *bed);
 void Bed_home(Bed *bed);
 
 ProbePosition Probe_calculate_position(Probe *probe, uint32_t x, uint32_t y);

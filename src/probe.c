@@ -80,14 +80,15 @@ void Probe_to_position_pair(Probe *probe, ProbePosition position) {
   // Cache the axis and rail from the probe
   Servo *axis = &probe->axis;
   Stepper *rail = &probe->rail;
-  // Move the stepper to its proper location
-  Stepper_move_to_immediate(rail, position.position);
   // Set the servo's target position
   Servo_set_target(axis, position.rotation);
   // Update the servo rotation at 20ms tick intervals
 	while(!Servo_rotate_delta(&probe->axis, 0.1)) {
 		HAL_Delay(10);
 	}
+
+	// Move the stepper to its proper location
+  Stepper_move_to_immediate(rail, position.position);
 }
 
 void Probe_set_position(Probe *probe, uint32_t x, uint32_t y) {
@@ -146,13 +147,12 @@ void Probe_home(Probe *probe) {
 	Servo_set_value(&probe->axis, (probe->side == Right) ? SERVO_MAX : SERVO_MIN);
 	HAL_Delay(500);
 
-
-  // Temporarily raise the probe position to bypass limits
-  probe->rail.position = RAIL_LEN - 1;
   // Set the direction backwards
   Stepper_set_direction(&probe->rail, STEPD_BACKWARDS);
   // Step the probe backwards while it isn't homed
   while (!Probe_at_home(probe)) {
+		// Temporarily raise the probe position to bypass limits
+  	probe->rail.position = 10000;
     Stepper_step_immediate(&probe->rail);
   }
   probe->rail.position = 0;
@@ -193,16 +193,20 @@ void ProbeSet_home(ProbeSet *probes) {
 
 
 bool ProbeSet_run_probe(ProbeSet* probes, NetlistPoint a, NetlistPoint b) {
-	Bed_lower(&probes->bed);
+	ProbeSet_lower_bed(probes);
 	HAL_Delay(10);
 
 	Probe_set_position(&probes->right, a.x, a.y);
 	Probe_set_position(&probes->left, b.x, b.y);
 
 	HAL_Delay(10);
-	Bed_raise(&probes->bed);
+	ProbeSet_raise_bed(probes);
 	HAL_Delay(100);
 
 	bool result = ProbeSet_test_continuity(probes);
+
+	HAL_Delay(10);
+	ProbeSet_lower_bed(probes);
+
 	return result;
 }

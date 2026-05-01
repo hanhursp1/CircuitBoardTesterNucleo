@@ -70,13 +70,13 @@ void NetlistEntry_probe(NetlistEntry self) {
 
 		for (int i = 1; i < self.length; i++) {
 			int id = self.start_index + i;
-			Bed_lower(&probes.bed);
+			ProbeSet_lower_bed(&probes);
 			// The dynamic point that we're testing
 			NetlistPoint dynamic_point = get_point(id);
 			// Set the left probe position to this dynamic point
 			Probe_set_position(&probes.left, dynamic_point.x, dynamic_point.y);
 
-			Bed_raise(&probes.bed);
+			ProbeSet_raise_bed(&probes);
 			HAL_Delay(10);
 			bool continuity = ProbeSet_test_continuity(&probes);
 			if (continuity) {
@@ -88,7 +88,7 @@ void NetlistEntry_probe(NetlistEntry self) {
 				num_bad += 1;
 			}
 		}
-		Bed_lower(&probes.bed);
+		ProbeSet_lower_bed(&probes);
 		
 		// All test points failed, meaning the static point is likely bad. Report this and start from the next point!
 		if (num_bad == self.length) {

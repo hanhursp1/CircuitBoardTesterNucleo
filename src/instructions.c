@@ -337,6 +337,17 @@ DEF_INSTR(probe) {
   return 1;
 }
 
+DEF_INSTR(cont) {
+	bool result = ProbeSet_test_continuity(&probes);
+	if (result)
+    printf("!res:0:pass;\n");
+  else
+    printf("!res:0:fail;\n");
+
+	return 1;
+}
+
+
 const Instruction *const instructions[] = {
     &INSTR(vertcnt),       &INSTR(netcnt),     &INSTR(vert),
     &INSTR(net),           &INSTR(echo),       &INSTR(stepper),
@@ -344,7 +355,7 @@ const Instruction *const instructions[] = {
     &INSTR(led),           &INSTR(movprobe),   &INSTR(servrot),
     &INSTR(probepos),      &INSTR(servotest),  &INSTR(ping),
     &INSTR(fakeresp),      &INSTR(servotable), &INSTR(verts),
-    &INSTR(nets),          &INSTR(home),       &INSTR(probe)};
+    &INSTR(nets),          &INSTR(home),       &INSTR(probe), &INSTR(cont)};
 
 #define INSTR_COUNT (sizeof(instructions) / sizeof(Instruction *))
 
