@@ -1,8 +1,16 @@
 #pragma once
 
+#include "config.h"
+
+#define PI 3.14159265359
+
 typedef enum bool {
 	false, true
 } bool;
+
+typedef enum Side {
+	Left, Right
+} Side;
 
 // Custom assert that simply returns from the file
 void __assert_return(const char * filename, int line, const char * funcname, const char * what_broke);

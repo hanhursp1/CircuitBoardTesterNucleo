@@ -1,4 +1,5 @@
 #pragma once
+
 #include "common.h"
 #include "stm32f4xx.h"
 #include <stdint.h>
@@ -41,6 +42,7 @@ typedef enum StepperMode {
 typedef enum StepperDirection {
 	STEPD_CLOCKWISE, STEPD_COUNTERCLOCKWISE
 } StepperDirection;
+
 
 #define STEPD_FORWARDS STEPD_CLOCKWISE
 #define STEPD_BACKWARDS STEPD_COUNTERCLOCKWISE

@@ -1,15 +1,23 @@
-#include "gcodes.h"
+#include "estop.h"
+#include "i2c.h"
+#include "instructions.h"
+#include "probe.h"
+#include "servo.h"
 #include "stm32f446xx.h"
 #include "stm32f4xx.h"
 
 #include "stepper.h"
 
+#include "netlist.h"
+#include "scheduler.h"
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_gpio.h"
 #include "stm32f4xx_hal_rcc.h"
 #include "usart.h"
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 #define LED_PIN GPIO_PIN_5
@@ -18,107 +26,57 @@
 
 void LED_Init();
 
-Stepper stepper_Z;
-Stepper stepper_L;
-Stepper stepper_R;
+// The Servo motor board
+PCA9685 board = {.addr = 0x40, .prescaler = 121};
 
-void __gcode_assert(const char *filename, int line, const char *funcname,
-                    const char *what_broke) {
-  printf("Exception in file: \"%s:%d\": \n\tFunction \"%s\": `%s` evaluated to "
-         "false",
-         filename, line, funcname, what_broke);
+// This also triggers when something goes wrong with a stepper or servo.
+// We don't know why, but it just does.
+bool ESTOP_Callback() {
+  USART_write_string(USB_USART, "!err:ESTOP;\n");
+  PCA9685_sleep(&board);
+  return false;
 }
 
-void __assert_func(const char *filename, int line, const char *funcname,
-                   const char *what_broke) {
-  printf("Exception in file: \"%s:%d\": \n\tFunction \"%s\": `%s` evaluated to "
-         "false",
-         filename, line, funcname, what_broke);
-  while (true) {
-  } // Loop forever
-}
+// The probes and their associated I/O
+ProbeSet probes = {
+    .left =
+        {.rail =
+             {
+                 .io = {.gpio = GPIOB, .step = GPIO_PIN_2, .dir = GPIO_PIN_3},
+             },
+         .axis = {.board = &board,
+                  .channel = 0,
+                  .range_max = 430,
+                  .range_min = 185},
+         .side = Left,
+         .io = {.gpio = GPIOC,
+                .probe_pin = GPIO_PIN_5,
+                .homing_pin = GPIO_PIN_8}},
+    .right =
+        {.rail = {.io = {.gpio = GPIOB, .step = GPIO_PIN_0, .dir = GPIO_PIN_1}},
+         .axis = {.board = &board,
+                  .channel = 1,
+                  .range_max = 430,
+                  .range_min = 185},
+         .side = Right,
+         .io = {.gpio = GPIOC, .probe_pin = 0, .homing_pin = GPIO_PIN_6}},
+    .bed = {// TODO: Other GPIO
+            .stepper = {.io = {.gpio = GPIOB,
+                               .step = GPIO_PIN_4,
+                               .dir = GPIO_PIN_5}}
 
-// Placeholder gcode execution function
-void exec_gcode(Gcode gcode) {
-  gcode_assert(gcode.num_args >= 1);
-  // Switch based on command group (this is the letter of the command)
-  switch (gcode.args[0].id) {
-  case 'R': {
-    Stepper *s;
-    char *stepper_name;
-    // Switch based on command id (this is the number of the command)
-    switch (gcode.args[0].value) {
-    /*  Command R20:
-     *    Commands R20 R{N} and R20 L{N} rotate the stepper motor by N steps
-     * clockwise and counterclockwise respectfully.
-     */
-    // goto considered harmful, but I like to live dangerously
-    case 20:
-      s = &stepper_Z;
-      stepper_name = "Stepper Z";
-      break;
-    case 30:
-      s = &stepper_L;
-      stepper_name = "Stepper L";
-      break;
-    case 40:
-      s = &stepper_R;
-      stepper_name = "Stepper R";
-      break;
-    default:
-      printf("Unrecognized gcode instruction: %c%d", gcode.args[0].id,
-             gcode.args[0].value);
-      break;
-    }
-    if (s) {
-      // Assert that the input is valid. Panic if not.
-      gcode_assert(gcode.num_args >= 2);
-      char id = gcode.args[1].id;
-      gcode_assert(id == 'L' || id == 'R');
-
-      // Get the direction based on the argument id, and the number of turns
-      // based on the argument value
-      StepperDirection dir =
-          (id == 'L') ? STEPD_COUNTERCLOCKWISE : STEPD_CLOCKWISE;
-      int num_turns = gcode.args[1].value;
-
-      // Alert the user over USART stdout
-      printf("Turning %s %s %d ticks...\n", stepper_name,
-             (dir == STEPD_CLOCKWISE) ? "clockwise" : "counterclockwise",
-             num_turns);
-      fflush(stdout);
-      // Set the direction of the stepper
-      Stepper_set_direction(s, dir);
-      // Actually rotate the stepper
-      for (int i = 0; i < num_turns; i++) {
-        Stepper_step_immediate(s);
-      }
-    }
-  } break;
-  case 'G': {
-    switch (gcode.args[0].value) {
-    /*  Command G00:
-     *    Simple debug command that toggles the on-board LED
-     */
-    case 0: {
-      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-    } break;
-    }
-  } break;
-  default: {
-    printf("Unrecognized gcode instruction: %c%d", gcode.args[0].id,
-           gcode.args[0].value);
-  } break;
-  }
-}
+    }};
 
 int main(void) {
   // Init Hardware Abstraction Layer
   HAL_Init();
-  // Enable GPIOB
+  // Enable GPIOB and GPIOC
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   // Init LED for lights and stuff :)
   LED_Init();
+  // Init estop pin
+  // ESTOP_init();
 
   // Do a delay before working any further (fixes something, I forget what.)
   HAL_Delay(1000);
@@ -126,49 +84,36 @@ int main(void) {
   // Initialize USB serial, which also initializes the stdout and stdin
   USB_init();
 
-  stepper_Z.io =
-      (StepperIO){.gpio = GPIOB, .step = GPIO_PIN_5, .dir = GPIO_PIN_6};
-  stepper_L.io =
-      (StepperIO){.gpio = GPIOB, .step = GPIO_PIN_1, .dir = GPIO_PIN_2};
-  stepper_R.io =
-      (StepperIO){.gpio = GPIOB, .step = GPIO_PIN_3, .dir = GPIO_PIN_4};
-  Stepper_init_simplified(&stepper_Z);
-  Stepper_init_simplified(&stepper_L);
-  Stepper_init_simplified(&stepper_R);
+  // Initialize I2C1
+  board.i2c = I2C1_Init();
 
-  HAL_Delay(100);
+  // Initialize probe set
+  ProbeSet_init(&probes);
 
-  Stepper_set_direction(&stepper_Z, STEPD_CLOCKWISE);
+	// while (true) {
+	// 	if (HAL_GPIO_ReadPin(probes.left.io.gpio, probes.left.io.homing_pin)) {
+	// 		printf("Left home hit!\n");
+	// 	}
+	// 	if (HAL_GPIO_ReadPin(probes.right.io.gpio, probes.right.io.homing_pin)) {
+	// 		printf("Right home hit!\n");
+	// 	}
 
-  // Prompt the user for a gcode instruction, and then execute it.
+	// 	fflush(stdout);
+
+	// 	HAL_Delay(10);
+	// }
+
+  // TODO: Finalize main loop implementation
+
+  printf("!dbg:Ready;\n");
+
   while (true) {
-    printf("Enter an instruction: ");
-
-    // Decode the next valid instruction and then flush the USART
-    Gcode test = gcode_decode(stdin);
+    fflush(stdin);
     USART_flush(USB_USART);
-
-    // Print the commmand we got
-    printf("Got %d args: ", test.num_args);
-    for (int i = 0; i < test.num_args; i++) {
-      printf("%c%d ", test.args[i].id, test.args[i].value);
-    }
-    printf("\n");
-    // Run the command
-    exec_gcode(test);
+    execute_instruction(stdin);
+    // scheduling_test();
   }
-
-  while (1) {
-    // Print to stdout and flush it
-    // printf("Hello world! %d\n", i++);
-    fflush(stdout);
-
-    // Toggle onboard LED
-    GPIOA->ODR |= 0x0020;
-    HAL_Delay(1000);
-    GPIOA->ODR &= ~0x0020;
-    HAL_Delay(1000);
-  }
+  HAL_GPIO_WritePin(LED_GPIO_PORT, LED_PIN, GPIO_PIN_SET);
 }
 
 void LED_Init() {

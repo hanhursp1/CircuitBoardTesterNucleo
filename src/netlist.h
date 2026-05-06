@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "config.h"
+#include "usart.h"
 
 typedef struct NetlistEntry {
 	uint16_t start_index;
@@ -10,26 +11,28 @@ typedef struct NetlistEntry {
 } NetlistEntry;
 
 typedef struct NetlistPoint {
-	int16_t x;
-	int16_t y;
+	int32_t x;
+	int32_t y;
 } NetlistPoint;
-
-typedef struct NetlistEntryInfo {
-	uint16_t  length;
-	NetlistPoint* start_point;
-} NetlistEntryInfo;
 
 extern NetlistPoint points_buffer[MAX_POINTS];
 extern NetlistEntry nets_buffer[MAX_INDICES];
 
 // Get the net at the point as a pair struct representing a length and indexable sub-array
-NetlistEntryInfo get_net(int id);
+NetlistEntry get_net(int id);
+NetlistPoint get_point(int id);
 int get_net_count();
+int get_vert_count();
+
+void set_vert_count(int cnt);
+
+void set_net_count(int cnt);
 
 void clear_netlist();
 
-void fill_netlist_from_file(FILE* f);
-void fill_pointlist_from_file(FILE* f);
+void set_vert(int id, int32_t x, int32_t y);
+void set_net(int id, uint16_t start, uint16_t len);
 
+void NetlistEntry_probe(NetlistEntry entry);
 // Slices a `NetlistEntryInfo` object, returning a subsection of it
-NetlistEntryInfo NetlistEntryInfo_slice(NetlistEntryInfo self, int from, int to);
+// NetlistEntryInfo NetlistEntryInfo_slice(NetlistEntryInfo self, int from, int to);
