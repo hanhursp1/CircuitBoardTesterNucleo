@@ -76,7 +76,7 @@ int main(void) {
   // Init LED for lights and stuff :)
   LED_Init();
   // Init estop pin
-  ESTOP_init();
+  // ESTOP_init();
 
   // Do a delay before working any further (fixes something, I forget what.)
   HAL_Delay(1000);

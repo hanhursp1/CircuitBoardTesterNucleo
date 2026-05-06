@@ -49,6 +49,8 @@ void Servo_set_value(Servo *servo, float value) {
   // Calculate the base register for this servo
   uint8_t base_register = PWM_REGISTER(servo->channel);
 
+	servo->value = value;
+
   // Calculate the absolute value from the target in radians
   uint16_t value_u = _Servo_lerp(servo->range_min, servo->range_max, value);
 
@@ -108,7 +110,7 @@ void Servo_rotate_smooth(Servo *servo, float delta_time, uint32_t cooldown) {
 void Servo_set_target(Servo *servo, float target) { servo->target = target; }
 
 bool Servo_at_destination(Servo *servo) {
-  if (fabsf(servo->target - servo->value) < 0.00001) {
+  if (fabsf(servo->target - servo->value) < 0.0001) {
     servo->value = servo->target;
     return true;
   }
